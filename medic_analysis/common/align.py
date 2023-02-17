@@ -1,7 +1,4 @@
-from memori.logging import run_process, setup_logging
-
-# setup logging
-setup_logging()
+from memori.logging import run_process
 
 
 def framewise_align(ref_frame, img_file, out_prefix):
