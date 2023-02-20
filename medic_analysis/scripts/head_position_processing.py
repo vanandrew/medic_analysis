@@ -9,9 +9,20 @@ from medic_analysis.common import (
     apply_framewise_mats,
     run_topup,
     framewise_align,
-    medic_call,
+    run_medic,
 )
-from warpkit.utilities import displacement_map_to_field
+from warpkit.utilities import (
+    displacement_map_to_field,
+    resample_image,
+    convert_warp,
+    field_maps_to_displacement_maps,
+    displacement_maps_to_field_maps,
+    invert_displacement_maps,
+)
+from warpkit.model import (
+    fit_motion_model,
+    apply_motion_model,
+)
 from . import (
     parser,
     PED_TABLE,
@@ -81,6 +92,12 @@ def main():
         help="Polarity of the reference field map. Options are 'AP' or 'PA'. By default PA.",
         default="PA",
         choices=["AP", "PA"],
+    )
+    parser.add_argument(
+        "--num_frames",
+        type=int,
+        default=100,
+        help="Number of frames to use for the head position analysis.",
     )
 
     # call the parser
@@ -235,7 +252,7 @@ def main():
 
             # now run framewise alignment
             logging.info(f"Running run{run:02d}")
-            stage_medic = Stage(medic_call, stage_name="medic", hash_output=(hash_outputs / f"run{run:02d}").path)
+            stage_medic = Stage(run_medic, stage_name="medic", hash_output=(hash_outputs / f"run{run:02d}").path)
             stage_medic.run(
                 [echo.path for echo in me_epi_phase_data[idx]],
                 [echo.path for echo in me_epi_mag_data[idx]],
@@ -267,14 +284,14 @@ def main():
                 nib.Nifti1Image(concat_data, pa_fmap_img.affine).to_filename(fmaps)
 
             # write acqparams file
-            with open("acqparams.txt", "w") as f:
+            acqparams = (PathMan(f"run{run:02d}") / "acqparams.txt").path
+            with open(acqparams, "w") as f:
                 ped_idx = PED_TABLE[pa_fmap.get_metadata()["PhaseEncodingDirection"]]
                 for _ in range(pa_data.shape[-1]):
                     f.write(f"{ped_idx} {total_readout_time}\n")
                 ped_idx = PED_TABLE[ap_fmap.get_metadata()["PhaseEncodingDirection"]]
                 for _ in range(ap_data.shape[-1]):
                     f.write(f"{ped_idx} {total_readout_time}\n")
-            acqparams = (PathMan(f"run{run:02d}") / "acqparams.txt").path
 
             # now run framewise alignment
             logging.info(f"Running run{run:02d}")
@@ -283,8 +300,8 @@ def main():
                 fmaps,
                 acqparams,
                 PathMan(f"run{run:02d}").path,
-                (PathMan(f"run{run:02d}") / "fout").path,
                 (PathMan(f"run{run:02d}") / "iout").path,
+                (PathMan(f"run{run:02d}") / "fout").path,
                 (PathMan(f"run{run:02d}") / "dfout").path,
             )
 
@@ -303,7 +320,18 @@ def main():
                 me_epi_ref_path,
                 (medic_output / f"run{run:02d}" / "fmap.nii.gz").path,
                 (func_aligned_output / f"run{run:02d}" / f"run{run:02d}.mat").path,
-                (PathMan(f"run{run:02d}") / f"run{run:02d}").path,
+                (PathMan(f"run{run:02d}") / f"fmap").path,
+            )
+            stage_apply_framewise_mats = Stage(
+                apply_framewise_mats,
+                stage_name="apply_framewise_mats_func_native",
+                hash_output=(hash_outputs / f"run{run:02d}").path,
+            )
+            stage_apply_framewise_mats.run(
+                me_epi_ref_path,
+                (medic_output / f"run{run:02d}" / "fmap.nii.gz").path,
+                (func_aligned_output / f"run{run:02d}" / f"run{run:02d}.mat").path,
+                (PathMan(f"run{run:02d}") / f"fmap_native").path,
             )
     topup_aligned_output = output_dir / "fieldmaps" / "topup_aligned"
     topup_aligned_output.mkdir(exist_ok=True, parents=True)
@@ -323,12 +351,162 @@ def main():
             )
 
     # apply corrections to data
-    corrected_medic_output = output_dir / "corrected_data"
-    corrected_medic_output.mkdir(exist_ok=True, parents=True)
-    with working_directory(corrected_medic_output.path):
+    corrected_outputs = output_dir / "corrected_data"
+    corrected_outputs.mkdir(exist_ok=True, parents=True)
+    with working_directory(corrected_outputs.path):
         for idx, run in zip(range(n_runs), layout.get_runs(datatype="func")):
-            PathMan(f"run{run:02d}").mkdir(exist_ok=True)
+            current_run = PathMan(f"run{run:02d}")
+            current_run.mkdir(exist_ok=True)
 
             # we only want to correct the first echo
             # so grab the path for it
             first_echo_path = me_epi_mag_data[idx][0].path
+
+            # now load the first echo data
+            first_echo_img = nib.load(first_echo_path)
+
+            # load the reference img
+            ref_img = nib.load(me_epi_ref_path)
+
+            # # do medic correction first
+            # medic_out = current_run / "medic"
+            # medic_out.mkdir(exist_ok=True, parents=True)
+            # with working_directory(medic_out.path):
+            #     # load the medic displacement maps
+            #     displacement_maps = output_dir / "fieldmaps" / "medic" / f"run{run:02d}" / "dmap.nii.gz"
+            #     dmaps_img = nib.load(displacement_maps)
+
+            #     # for each frame apply the correction
+            #     corrected_data = np.zeros((*first_echo_img.shape[:3], args.num_frames))
+            #     for frame_idx in range(args.num_frames):
+            #         logging.info(f"Correcting Frame: {frame_idx}")
+            #         # get the frame to correct
+            #         frame_data = first_echo_img.dataobj[..., frame_idx]
+
+            #         # make into image
+            #         frame_img = nib.Nifti1Image(frame_data, first_echo_img.affine)
+
+            #         # get the dmap for this frame
+            #         dmap_data = dmaps_img.dataobj[..., frame_idx]
+
+            #         # make into image
+            #         dmap_img = nib.Nifti1Image(dmap_data, dmaps_img.affine)
+
+            #         # get displacement field
+            #         dfield_img = displacement_map_to_field(dmap_img)
+
+            #         # apply the correction
+            #         corrected_img = resample_image(ref_img, frame_img, dfield_img)
+
+            #         # store the corrected_frame
+            #         corrected_data[..., frame_idx] = corrected_img.get_fdata()
+
+            #     # save the corrected data
+            #     corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
+            #     corrected_img.to_filename("medic_corrected.nii.gz")
+
+            # do medic correction with model stablization
+            medic2_out = current_run / "medic_model_stabilized"
+            medic2_out.mkdir(exist_ok=True, parents=True)
+            with working_directory(medic2_out.path):
+                # load the medic fmaps in native space
+                field_maps = output_dir / "fieldmaps" / "medic" / f"run{run:02d}" / "fmap_native.nii.gz"
+                fmaps_img = nib.load(field_maps)
+
+                # leave out noise frames
+                fmaps_data = fmaps_img.dataobj[..., :args.num_frames]
+                fmaps_img = nib.Nifti1Image(fmaps_data, fmaps_img.affine)
+
+                # get the motion parameters for this run
+                motion_params_path = output_dir / "framewise_align" / "func" / f"run{run:02d}" / f"run{run:02d}.par"
+                motion_params = np.loadtxt(motion_params_path)[:args.num_frames, :]
+
+                # fit model to motion params and field map
+                weights = fit_motion_model([fmaps_img], [motion_params])
+
+                # get metadata for run
+                phase_encoding_direction = me_epi_mag_data[idx][0].get_metadata()["PhaseEncodingDirection"]
+                total_readout_time = me_epi_mag_data[idx][0].get_metadata()["TotalReadoutTime"]
+
+                # get model stabilized field maps
+                model_stabilized_fmaps_native = apply_motion_model(weights, motion_params, 0)
+
+                # make image
+                model_stabilized_fmaps_native_img = nib.Nifti1Image(model_stabilized_fmaps_native, fmaps_img.affine)
+                model_stabilized_fmaps_native_img.to_filename("model_stabilized_fmaps_native.nii.gz")
+
+                # now we convert to displacement field and invert
+                inv_dmaps_img = field_maps_to_displacement_maps(
+                    model_stabilized_fmaps_native_img, total_readout_time, phase_encoding_direction
+                )
+                dmaps_img = invert_displacement_maps(inv_dmaps_img, phase_encoding_direction)
+
+                # make field map image
+                model_stabilized_fmaps = displacement_maps_to_field_maps(
+                    dmaps_img, total_readout_time, phase_encoding_direction, flip_sign=True
+                )
+                model_stabilized_fmaps.to_filename("model_stabilized_fmaps.nii.gz")
+
+                # correct data with
+                corrected_data = np.zeros((*first_echo_img.shape[:3], args.num_frames))
+                for frame_idx in range(args.num_frames):
+                    logging.info(f"Correcting Frame: {frame_idx}")
+                    # get the frame to correct
+                    frame_data = first_echo_img.dataobj[..., frame_idx]
+
+                    # make into image
+                    frame_img = nib.Nifti1Image(frame_data, first_echo_img.affine)
+
+                    # get displacement map for frame
+                    dmap_data = dmaps_img.dataobj[..., frame_idx]
+
+                    # make into image
+                    dmap_img = nib.Nifti1Image(dmap_data, dmaps_img.affine)
+
+                    # get displacement field from map
+                    dfield_img = displacement_map_to_field(dmap_img)
+
+                    # apply the correction
+                    corrected_img = resample_image(ref_img, frame_img, dfield_img)
+
+                    # store the corrected_frame
+                    corrected_data[..., frame_idx] = corrected_img.get_fdata()
+
+                # save the corrected data
+                corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
+                corrected_img.to_filename("medic_ms_corrected.nii.gz")
+
+            # # now correct with topup
+            # topup_out = current_run / "topup"
+            # topup_out.mkdir(exist_ok=True, parents=True)
+            # with working_directory(topup_out.path):
+            #     # load the topup displacment field (use first field)
+            #     displacement_field = nib.load(output_dir / "fieldmaps" / "topup" / f"run{run:02d}" / "dfout_01.nii.gz")
+
+            #     # get the data
+            #     field_data = displacement_field.get_fdata()
+
+            #     # make into image
+            #     field_img = nib.Nifti1Image(field_data, ref_img.affine)
+
+            #     # convert to itk format
+            #     itk_field_img = convert_warp(field_img, "fsl", "itk")
+
+            #     # for each frame apply the correction
+            #     corrected_data = np.zeros((*first_echo_img.shape[:3], args.num_frames))
+            #     for frame_idx in range(args.num_frames):
+            #         logging.info(f"Correcting Frame: {frame_idx}")
+            #         # get the frame to correct
+            #         frame_data = first_echo_img.dataobj[..., frame_idx]
+
+            #         # make into image
+            #         frame_img = nib.Nifti1Image(frame_data, first_echo_img.affine)
+
+            #         # apply the correction
+            #         corrected_img = resample_image(ref_img, frame_img, itk_field_img)
+
+            #         # store the corrected_frame
+            #         corrected_data[..., frame_idx] = corrected_img.get_fdata()
+            #     # save the corrected data
+            #     corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
+            #     corrected_img.to_filename("topup_corrected.nii.gz")

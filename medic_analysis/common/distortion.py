@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import nibabel as nib
 from memori.logging import run_process
 from memori.pathman import PathManager as PathMan
@@ -11,7 +12,19 @@ else:
     ROMEO_PATH = os.environ.get("ROMEO_PATH")
 
 
-def medic_call(phases, mag, echo_times, total_readout_time, phase_encoding_direction, run):
+def run_medic(
+    phases,
+    mag,
+    echo_times,
+    total_readout_time,
+    phase_encoding_direction,
+    run,
+    num_frames=100,
+    ms=False,
+    motion_params=None,
+):
+    if motion_params is not None:
+        motion_params = np.loadtxt(motion_params)[:num_frames, :]
     phase_imgs = [nib.load(i) for i in phases]
     mag_imgs = [nib.load(i) for i in mag]
     fmap_native, dmap, fmap = medic(
@@ -20,15 +33,14 @@ def medic_call(phases, mag, echo_times, total_readout_time, phase_encoding_direc
         echo_times,
         total_readout_time,
         phase_encoding_direction,
+        frames=[i for i in range(num_frames)],
+        model_stabilization=ms,
+        motion_params=motion_params,
     )
     # save the data
     fmap_native.to_filename(PathMan(f"run{run:02d}") / "fmap_native.nii.gz")
     dmap.to_filename(PathMan(f"run{run:02d}") / "dmap.nii.gz")
     fmap.to_filename(PathMan(f"run{run:02d}") / "fmap.nii.gz")
-
-
-def medic_correct(img, dmap, out_file):
-    pass
 
 
 def run_topup(fmaps, acqparams, out_path, iout_path, fout_path, dfout_path):

@@ -1,5 +1,6 @@
 import shutil
 import nibabel as nib
+import numpy as np
 from bids import BIDSLayout
 from memori.stage import Stage
 from memori.helpers import working_directory
@@ -8,7 +9,8 @@ from medic_analysis.common import (
     N4BiasCorrection,
     run_romeo,
     run_topup,
-    medic_call,
+    run_medic,
+    framewise_align,
 )
 from . import (
     parser,
@@ -176,7 +178,7 @@ def main():
             stage_name="topup",
             hash_output=(se_fmap_hashout / "topup").path,
         )
-        topup_stage.run(imain, acqparams, "./", "fout", "iout", "dfout")
+        topup_stage.run(imain, acqparams, "./", "iout", "fout", "dfout")
 
     # run medic
     medic_dir = output_dir / "medic"
@@ -192,7 +194,7 @@ def main():
 
         # run medic
         medic_stage = Stage(
-            medic_call,
+            run_medic,
             stage_name="medic",
             hash_output=(medic_hashout / "medic").path,
         )
@@ -207,5 +209,56 @@ def main():
         )
         if PathMan("run01").exists():
             for f in PathMan("run01").glob("*"):
-                shutil.move(f, "./")
+                shutil.move(f, PathMan("./") / f.name)
+            shutil.rmtree("run01")
+
+    # run medic (model stabilized)
+    medic_dir = output_dir / "medic_ms"
+    medic_dir.mkdir(exist_ok=True)
+    with working_directory(medic_dir.path):
+        medic_hashout = hash_outputs / medic_dir.name
+        medic_hashout.mkdir(exist_ok=True)
+
+        # get echo times, total readout time, and phase encoding direction
+        echo_times = [p.get_metadata()["EchoTime"] * 1000 for p in me_epi_phase]
+        total_readout_time = me_epi_phase[0].get_metadata()["TotalReadoutTime"]
+        phase_encoding_direction = me_epi_phase[0].get_metadata()["PhaseEncodingDirection"]
+
+        # get first frame
+        first_echo = me_epi_mag[0].get_image()
+        first_frame = nib.Nifti1Image(first_echo.dataobj[..., 0], first_echo.affine, first_echo.header)
+        first_frame.to_filename("ref_frame.nii.gz")
+
+        # run mcflirt
+        mcflirt_stage = Stage(
+            framewise_align,
+            stage_name="mcflirt",
+            hash_output=(medic_hashout / "mcflirt").path,
+        )
+        mcflirt_stage.run(
+            "ref_frame.nii.gz",
+            me_epi_mag[0].path,
+            "me_framewise_align",
+        )
+
+        # run medic
+        medic_stage = Stage(
+            run_medic,
+            stage_name="medic_ms",
+            hash_output=(medic_hashout / "medic_ms").path,
+        )
+        PathMan("run01").mkdir(exist_ok=True)
+        medic_stage.run(
+            [p.path for p in me_epi_phase],
+            [p.path for p in me_epi_mag],
+            echo_times,
+            total_readout_time,
+            phase_encoding_direction,
+            1,
+            ms=True,
+            motion_params="me_framewise_align.par",
+        )
+        if PathMan("run01").exists():
+            for f in PathMan("run01").glob("*"):
+                shutil.move(f, PathMan("./") / f.name)
             shutil.rmtree("run01")
