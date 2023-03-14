@@ -107,7 +107,7 @@ def main():
         with working_directory(ms_output / f"run{run:02d}"):
             stabilized_fmap_native_ref.to_filename("fmap_native_refaligned.nii.gz")
             # realign into native space
-            for mat in (framewise_align_output / f"run{run:02d}" / f"run{run:02d}.mat").glob("*.mat"):
+            for mat in (framewise_align_output / f"run{run:02d}" / f"run{run:02d}.mat").glob("MAT*"):
                 run_process(
                     [
                         "convert_xfm",
@@ -122,7 +122,7 @@ def main():
                 "fmap_native_refaligned.nii.gz",
                 "fmap_native_refaligned.nii.gz",
                 (framewise_align_output / f"run{run:02d}" / f"run{run:02d}.mat").path,
-                out_prefic="fmap_native",
+                out_prefix="fmap_native",
                 mat_prefix="INVMAT_",
             )
         # load the stabilized field map

@@ -5,6 +5,7 @@ from bids import BIDSLayout
 from memori.stage import Stage
 from memori.helpers import working_directory
 from memori.pathman import PathManager as PathMan
+from memori.logging import run_process
 from medic_analysis.common import (
     N4BiasCorrection,
     run_romeo,
@@ -116,6 +117,9 @@ def main():
                     nib.load("mag2_biascorrected.nii.gz").affine,
                 ).to_filename("mag2_biascorrected_clipped.nii.gz")
 
+            # get brain mask
+            run_process(["bet", "mag1_biascorrected_clipped.nii.gz", "brain.nii.gz", "-f", "0.4", "-m", "-v"])
+
             # now concatenate the mags and phases
             if not PathMan("combined_mag.nii.gz").exists() and not PathMan("combined_phase.nii.gz").exists():
                 mag1 = nib.load("mag1_biascorrected_clipped.nii.gz")
@@ -143,7 +147,7 @@ def main():
             )
 
     # now process the SE field map
-    se_fmap_dir = output_dir / "se_fmap"
+    se_fmap_dir = output_dir / "topup"
     se_fmap_dir.mkdir(exist_ok=True)
     with working_directory(se_fmap_dir.path):
         se_fmap_hashout = hash_outputs / se_fmap_dir.name
@@ -192,38 +196,6 @@ def main():
         total_readout_time = me_epi_phase[0].get_metadata()["TotalReadoutTime"]
         phase_encoding_direction = me_epi_phase[0].get_metadata()["PhaseEncodingDirection"]
 
-        # run medic
-        medic_stage = Stage(
-            run_medic,
-            stage_name="medic",
-            hash_output=(medic_hashout / "medic").path,
-        )
-        PathMan("run01").mkdir(exist_ok=True)
-        medic_stage.run(
-            [p.path for p in me_epi_phase],
-            [p.path for p in me_epi_mag],
-            echo_times,
-            total_readout_time,
-            phase_encoding_direction,
-            1,
-        )
-        if PathMan("run01").exists():
-            for f in PathMan("run01").glob("*"):
-                shutil.move(f, PathMan("./") / f.name)
-            shutil.rmtree("run01")
-
-    # run medic (model stabilized)
-    medic_dir = output_dir / "medic_ms"
-    medic_dir.mkdir(exist_ok=True)
-    with working_directory(medic_dir.path):
-        medic_hashout = hash_outputs / medic_dir.name
-        medic_hashout.mkdir(exist_ok=True)
-
-        # get echo times, total readout time, and phase encoding direction
-        echo_times = [p.get_metadata()["EchoTime"] * 1000 for p in me_epi_phase]
-        total_readout_time = me_epi_phase[0].get_metadata()["TotalReadoutTime"]
-        phase_encoding_direction = me_epi_phase[0].get_metadata()["PhaseEncodingDirection"]
-
         # get first frame
         first_echo = me_epi_mag[0].get_image()
         first_frame = nib.Nifti1Image(first_echo.dataobj[..., 0], first_echo.affine, first_echo.header)
@@ -244,8 +216,8 @@ def main():
         # run medic
         medic_stage = Stage(
             run_medic,
-            stage_name="medic_ms",
-            hash_output=(medic_hashout / "medic_ms").path,
+            stage_name="medic",
+            hash_output=(medic_hashout / "medic").path,
         )
         PathMan("run01").mkdir(exist_ok=True)
         medic_stage.run(
@@ -255,10 +227,45 @@ def main():
             total_readout_time,
             phase_encoding_direction,
             1,
-            ms=True,
             motion_params="me_framewise_align.par",
         )
         if PathMan("run01").exists():
             for f in PathMan("run01").glob("*"):
                 shutil.move(f, PathMan("./") / f.name)
             shutil.rmtree("run01")
+
+    # resample fmaps to high res flash space
+    run_process(
+        [
+            "antsApplyTransforms",
+            "-d",
+            "4",
+            "-o",
+            str(PathMan(args.output_dir) / "topup" / "fout_hres.nii.gz"),
+            "-r",
+            str(PathMan(args.output_dir) / "flash1" / "romeo_output" / "B0.nii"),
+            "-i",
+            str(PathMan(args.output_dir) / "topup" / "fout.nii.gz"),
+            "-n",
+            "LanczosWindowedSinc",
+            "-v",
+            "1",
+        ]
+    )
+    run_process(
+        [
+            "antsApplyTransforms",
+            "-d",
+            "4",
+            "-o",
+            str(PathMan(args.output_dir) / "medic" / "fmap_hres.nii.gz"),
+            "-r",
+            str(PathMan(args.output_dir) / "flash1" / "romeo_output" / "B0.nii"),
+            "-i",
+            str(PathMan(args.output_dir) / "medic" / "fmap.nii.gz"),
+            "-n",
+            "LanczosWindowedSinc",
+            "-v",
+            "1",
+        ]
+    )

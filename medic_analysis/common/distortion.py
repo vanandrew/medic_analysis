@@ -20,11 +20,13 @@ def run_medic(
     phase_encoding_direction,
     run,
     num_frames=100,
-    ms=False,
     motion_params=None,
 ):
     if motion_params is not None:
         motion_params = np.loadtxt(motion_params)[:num_frames, :]
+        # load in motion params, convert rotations to mm
+        motion_params[:, :3] = np.rad2deg(motion_params[:, :3])
+        motion_params[:, :3] = 50 * (np.pi / 180) * motion_params[:, :3]
     phase_imgs = [nib.load(i) for i in phases]
     mag_imgs = [nib.load(i) for i in mag]
     fmap_native, dmap, fmap = medic(
@@ -34,8 +36,8 @@ def run_medic(
         total_readout_time,
         phase_encoding_direction,
         frames=[i for i in range(num_frames)],
-        model_stabilization=ms,
         motion_params=motion_params,
+        n_cpus=8,
     )
     # save the data
     fmap_native.to_filename(PathMan(f"run{run:02d}") / "fmap_native.nii.gz")
@@ -86,6 +88,9 @@ def run_romeo(phase, mag, echo_times, out):
             "-i",
             "-g",
             "-B",
+            "--phase-offset-smoothing-sigma-mm",
+            "[7,7,7]",
+            "--write-phase-offsets",
             "-o",
             out,
             "--verbose",
