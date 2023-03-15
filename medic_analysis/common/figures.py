@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import warnings
-import sys
+import logging
 from tempfile import TemporaryDirectory
 from memori.pathman import PathManager as Path
 import matplotlib.pyplot as plt
@@ -19,15 +19,45 @@ warnings.filterwarnings("ignore")
 sns.set(font="Lato", style="dark")
 plt.style.use("dark_background")
 
-# color palettes
-dark_div_1 = "icefire"
-
 
 def normalize(x: npt.NDArray) -> npt.NDArray:
+    """Normalize an array to the range [0, 1].
+
+    Parameters
+    ----------
+    x : npt.NDArray
+        Data to normalize.
+
+    Returns
+    -------
+    npt.NDArray
+        Normalized data.
+    """
     return (x - x.min()) / (x.max() - x.min())
 
 
-def ffmpeg(img_dir: str, out_file: str, fps: int = 20) -> None:
+def ffmpeg(img_dir: Union[str, Path], out_file: Union[str, Path], fps: int = 20) -> None:
+    """Create a video from a directory of images.
+
+    Parameters
+    ----------
+    img_dir : Union[str, Path]
+        Directory containing images.
+    out_file : Union[str, Path]
+        Output video file.
+    fps : int, optional
+        Frames per second, by default 20
+
+    Returns
+    -------
+    None
+    """
+    if type(img_dir) is Path:
+        img_dir = img_dir.path
+    img_dir = cast(str, img_dir)
+    if type(out_file) is Path:
+        out_file = out_file.path
+    out_file = cast(str, out_file)
     run_process(
         [
             "ffmpeg",
@@ -50,6 +80,24 @@ def ffmpeg(img_dir: str, out_file: str, fps: int = 20) -> None:
 def hz_limits_to_mm(
     hz_min: float = -100, hz_max: float = 200, total_readout_time: float = 0.0305196, resolution: float = 2
 ) -> Tuple[float, float]:
+    """Convert Hz limits to mm limits.
+
+    Parameters
+    ----------
+    hz_min : float, optional
+        Minimum Hz value, by default -100
+    hz_max : float, optional
+        Maximum Hz value, by default 200
+    total_readout_time : float, optional
+        Total readout time, by default 0.0305196
+    resolution : float, optional
+        Resolution, by default 2
+
+    Returns
+    -------
+    Tuple[float, float]
+        Minimum and maximum mm values.
+    """
     d_min = hz_min * total_readout_time * resolution
     d_max = hz_max * total_readout_time * resolution
     return d_min, d_max
@@ -58,6 +106,28 @@ def hz_limits_to_mm(
 def subplot_imshow(
     f: Union[Figure, SubFigure], data: npt.NDArray, entry: Tuple[int, int, int], vmin: float, vmax: float, cmap: str
 ) -> Tuple[Axes, AxesImage]:
+    """Create a subplot with an image.
+
+    Parameters
+    ----------
+    f : Union[Figure, SubFigure]
+        Figure to add subplot to.
+    data : npt.NDArray
+        Data to plot.
+    entry : Tuple[int, int, int]
+        Entry for subplot.
+    vmin : float
+        Minimum value for colorbar.
+    vmax : float
+        Maximum value for colorbar.
+    cmap : str
+        Colormap to use.
+
+    Returns
+    -------
+    Tuple[Axes, AxesImage]
+        Axes and image.
+    """
     ax = f.add_subplot(*entry, frame_on=False, anchor="C")
     im = ax.imshow(data, origin="lower", cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_xticklabels([])
@@ -68,26 +138,30 @@ def subplot_imshow(
 def data_plotter(
     imgs: Union[List[npt.NDArray], List[nib.Nifti1Image]],
     colormaps: Union[List[str], str] = "icefire",
-    slices: Tuple[int, int, int] = (54, 54, 30),
+    slices: Tuple[int, int, int] = (55, 55, 36),
     vmin: float = -100,
-    vmax: float = 200,
-    ishz: bool = False,
+    vmax: float = 150,
     colorbar: bool = False,
     colorbar_label: str = "Hz",
+    colorbar_labelpad: int = -5,
     colorbar_source_idx: Tuple[int, int] = (0, 0),
     colorbar_alt_range: bool = False,
+    colorbar_alt_labelpad: int = -5,
     colorbar_alt_range_fx: Callable = hz_limits_to_mm,
     colorbar_alt_label: str = "mm",
     colorbar_aspect: int = 60,
     colorbar2: bool = False,
     colorbar2_label: str = "Hz",
+    colorbar2_labelpad: int = -5,
     colorbar2_source_idx: Tuple[int, int] = (0, 0),
     colorbar2_alt_range: bool = False,
+    colorbar2_alt_labelpad: int = -50,
     colorbar2_alt_range_fx: Callable = hz_limits_to_mm,
     colorbar2_alt_label: str = "mm",
     colorbar2_aspect: int = 60,
     figsize: Sequence[float] = (8, 9),
     figure: Union[Figure, SubFigure, None] = None,
+    frame_num: int = 0,
 ) -> Union[Figure, SubFigure]:
     # if imgs has nib.Nifti1Image type in list, get numpy array data
     if type(imgs[0]) is nib.Nifti1Image:
@@ -115,6 +189,8 @@ def data_plotter(
     plot_idx = 1
     fig_row = []
     for cmap, img in zip(colormaps, imgs):
+        if len(img.shape) == 4:
+            img = img[:, :, :, frame_num]
         ax1, axi1 = subplot_imshow(f, img[:, :, slices[2]].T, (*grid_size, plot_idx), vmin, vmax, cmap)
         plot_idx += 1
         ax2, axi2 = subplot_imshow(f, img[slices[0], :, :].T, (*grid_size, plot_idx), vmin, vmax, cmap)
@@ -135,13 +211,13 @@ def data_plotter(
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("left")
-        cbar.ax.set_ylabel(colorbar_label, labelpad=-10, rotation=90)
+        cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, rotation=90)
         # for colorbar alt range
         if colorbar_alt_range:
             alt_vmin, alt_vmax = colorbar_alt_range_fx(vmin, vmax)
             cax = cbar.ax.twinx()
             cax.set_ylim(alt_vmin, alt_vmax)
-            cax.set_ylabel(colorbar_alt_label, labelpad=-5, rotation=90)
+            cax.set_ylabel(colorbar_alt_label, labelpad=colorbar_alt_labelpad, rotation=90)
 
     # if colorbar2 is set, draw it
     if colorbar2:
@@ -155,127 +231,56 @@ def data_plotter(
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("right")
-        cbar.ax.set_ylabel(colorbar2_label, labelpad=-5, rotation=90)
+        cbar.ax.set_ylabel(colorbar2_label, labelpad=colorbar2_labelpad, rotation=90)
         # for colorbar alt range
         if colorbar2_alt_range:
             alt_vmin, alt_vmax = colorbar2_alt_range_fx(vmin, vmax)
             cax = cbar.ax.twinx()
             cax.yaxis.set_ticks_position("left")
             cax.set_ylim(alt_vmin, alt_vmax)
-            cax.set_ylabel(colorbar2_alt_label, labelpad=-50, rotation=90)
+            cax.set_ylabel(colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, rotation=90)
             cbar.ax.yaxis.set_ticks_position("right")  # reset the ticks position on the non-alt bar
 
     # return figure
     return f
 
 
-# # render dynamic figure
-# def render_dynamic_figure(
-#     out_file, img, plot_func=plot_single, extra_title=None, img_labels=None, n_frames=None, **kwargs
-# ):
-#     if "img1_label" in kwargs:
-#         img_label = kwargs["img1_label"]
-#     else:
-#         img_label = ""
-#     # create temporary directory
-#     with TemporaryDirectory() as temp_dir:
-#         if n_frames is None:
-#             n_frames = img.shape[-1]
-#         for i in range(n_frames):
-#             print(f"frame: {i}")
-#             if img_labels:
-#                 img_label = img_labels[i]
-#             else:
-#                 img_label = None
+# render dynamic figure
+def render_dynamic_figure(
+    out_file: Union[str, Path],
+    imgs: Union[List[npt.NDArray], List[nib.Nifti1Image]],
+    figure_fx: Union[Callable, None] = None,
+    **kwargs,
+):
+    # create temporary directory
+    with TemporaryDirectory() as temp_dir:
+        # make sure images 4D
+        if not all([len(i.shape) == 4 for i in imgs]):
+            raise ValueError("All images must be 4D")
 
-#             # get data
-#             if type(img) == nib.nifti1.Nifti1Image:
-#                 img_data = img.dataobj[..., i]
-#             else:
-#                 img_data = img[..., i]
+        # make sure number of frames is the same for all imgs
+        if not all([i.shape[3] == imgs[0].shape[3] for i in imgs]):
+            raise ValueError("All images must have the same number of frames")
 
-#             # extra titles
-#             if extra_title is not None:
-#                 ex_title = extra_title[i]
-#             else:
-#                 ex_title = None
+        # get number of frames
+        num_frames = imgs[0].shape[3]
 
-#             # plot the image
-#             f = plot_func(img_data, img_label=img_label, extra_title=ex_title, **kwargs)
+        # loop through frames
+        for frame_num in range(num_frames):
+            logging.info(f"Rendering frame {frame_num+1} of {num_frames}")
+            # plot data and get figure
+            figure = data_plotter(imgs=imgs, **kwargs, frame_num=frame_num)
 
-#             # save the figure
-#             f.savefig(str(Path(temp_dir) / f"temp_{i:05d}.png"))
+            # modify the figure with figure_fx if it exists
+            if figure_fx is not None:
+                figure = figure_fx(figure)
 
-#             # close the figure
-#             plt.close(f)
+            # save figure to file in temp dir
+            figure = cast(Figure, figure)
+            figure.savefig(str(Path(f"{temp_dir}") / f"temp_{frame_num:05d}.png"))
 
-#         # run ffmpeg
-#         ffmpeg(temp_dir, out_file)
+            # close the figure
+            plt.close(figure)
 
-
-# def alignment_check(out_file, runs, ref, run_labels=None, n_frames=100, **kwargs):
-#     # create temporary directory
-#     with TemporaryDirectory() as temp_dir:
-#         k = 0
-#         for run_idx, r in enumerate(runs):
-#             for i in range(n_frames):
-#                 if run_labels:
-#                     kwargs["img1_label"] = f"{run_labels[run_idx]}\nframe: {i}"
-#                 print(f"frame: {k}")
-
-#                 # if only single frame plot single
-#                 if n_frames == 1:
-#                     data = r.get_fdata()
-#                 else:
-#                     data = r.dataobj[..., i]
-
-#                 # plot the image
-#                 f = plot_double(data, ref, colorbar=False, **kwargs)
-
-#                 # save the figure
-#                 f.savefig(str(Path(temp_dir) / f"temp_{k:05d}.png"))
-
-#                 # close the figure
-#                 plt.close(f)
-
-#                 # increment counter
-#                 k += 1
-
-#         # run ffmpeg
-#         ffmpeg(temp_dir, out_file)
-
-
-# def alignment_check_single(out_file, runs, run_labels=None, n_frames=100, extra=None, **kwargs):
-#     # create temporary directory
-#     with TemporaryDirectory() as temp_dir:
-#         k = 0
-#         for run_idx, r in enumerate(runs):
-#             for i in range(n_frames):
-#                 if run_labels:
-#                     kwargs["img_label"] = f"{run_labels[run_idx]}\nframe: {i}"
-#                 print(f"frame: {k}")
-
-#                 # if only single frame plot single
-#                 if n_frames == 1:
-#                     data = r.get_fdata()
-#                 else:
-#                     data = r.dataobj[..., i]
-
-#                 # plot the image
-#                 f = plot_single(data, colorbar=False, **kwargs)
-
-#                 # add extra plot
-#                 if extra:
-#                     extra()
-
-#                 # save the figure
-#                 f.savefig(str(Path(temp_dir) / f"temp_{k:05d}.png"))
-
-#                 # close the figure
-#                 plt.close(f)
-
-#                 # increment counter
-#                 k += 1
-
-#         # run ffmpeg
-#         ffmpeg(temp_dir, out_file)
+        # run ffmpeg
+        ffmpeg(temp_dir, out_file)
