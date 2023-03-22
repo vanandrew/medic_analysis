@@ -12,8 +12,20 @@ BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"
 
 
 def main():
+
+    # Create additional argument for multiprocessing
+    parser.add_argument(
+        "--multiproc",
+        type=bool,
+        help="Boolean flag to use multiprocessing. Defaults to False.",
+        default=False,
+        )
+
     # call the parser
     args = parser.parse_args()
+
+    # determine number of cpus based on multiprocessing flag
+    n_cpus = 8 if args.multiproc else 1
 
     # if bids dir not specified, use default
     if args.bids_dir is None:
@@ -32,6 +44,7 @@ def main():
 
     # loop over runs
     runs = layout.get_runs(datatype="func")
+
     for run in runs:
         (output_dir / f"run-{run}").mkdir(exist_ok=True)
         with working_directory((output_dir / f"run-{run}").path):
@@ -41,7 +54,6 @@ def main():
             phase_imgs = [p.get_image() for p in phase]
             TEs = [m.get_metadata()["EchoTime"] * 1000 for m in mag]
             total_readout_time = mag[0].get_metadata()["TotalReadoutTime"]
-            phase_imgs = [p.get_image() for p in phase]
             phase_encoding_direction = mag[0].get_metadata()["PhaseEncodingDirection"]
 
             # get reference frame
@@ -66,7 +78,7 @@ def main():
                 TEs,
                 total_readout_time,
                 phase_encoding_direction,
-                n_cpus=8,
+                n_cpus=n_cpus,
                 motion_params=motion_params,
                 frames=list(range(510))
             )
