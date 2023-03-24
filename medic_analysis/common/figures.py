@@ -250,6 +250,7 @@ def render_dynamic_figure(
     out_file: Union[str, Path],
     imgs: Union[List[npt.NDArray], List[nib.Nifti1Image]],
     figure_fx: Union[Callable, None] = None,
+    fps: int = 10,
     **kwargs,
 ):
     # create temporary directory
@@ -273,7 +274,7 @@ def render_dynamic_figure(
 
             # modify the figure with figure_fx if it exists
             if figure_fx is not None:
-                figure = figure_fx(figure)
+                figure = figure_fx(figure, frame_num)
 
             # save figure to file in temp dir
             figure = cast(Figure, figure)
@@ -283,4 +284,4 @@ def render_dynamic_figure(
             plt.close(figure)
 
         # run ffmpeg
-        ffmpeg(temp_dir, out_file)
+        ffmpeg(temp_dir, out_file, fps)
