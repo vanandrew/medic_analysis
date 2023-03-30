@@ -21,6 +21,14 @@ def main():
         default=False,
         )
 
+    # Create additional argument for debug mode
+    parser.add_argument(
+        "--debug",
+        type=bool,
+        help="Boolean flag to use debug mode. Defaults to False.",
+        default=False,
+        )
+
     # call the parser
     args = parser.parse_args()
 
@@ -80,7 +88,8 @@ def main():
                 phase_encoding_direction,
                 n_cpus=n_cpus,
                 motion_params=motion_params,
-                frames=list(range(510))
+                frames=list(range(510)),
+                debug=args.debug
             )
             fmap_native.to_filename("fmap_native.nii.gz")
             dmap.to_filename("dmap.nii.gz")
