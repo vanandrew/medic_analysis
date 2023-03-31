@@ -10,7 +10,6 @@ from . import parser
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"
 
-
 def main():
 
     # Create additional argument for multiprocessing
@@ -19,15 +18,14 @@ def main():
         type=bool,
         help="Boolean flag to use multiprocessing. Defaults to False.",
         default=False,
-        )
+    )
 
     # Create additional argument for debug mode
     parser.add_argument(
         "--debug",
-        type=bool,
-        help="Boolean flag to use debug mode. Defaults to False.",
-        default=False,
-        )
+        action="store_true",
+        help="Boolean flag to use debug mode. Defaults to False."
+    )
 
     # call the parser
     args = parser.parse_args()
