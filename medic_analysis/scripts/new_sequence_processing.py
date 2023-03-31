@@ -10,13 +10,19 @@ from . import parser
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"
 
-
 def main():
     # Create additional argument for multiprocessing
     parser.add_argument(
         "--multiproc",
         action="store_true",
-        help="Boolean flag to use multiprocessing. Defaults to False.",
+        help="Boolean flag to use multiprocessing."
+    )
+
+    # Create additional argument for debug mode
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Boolean flag to use debug mode."
     )
 
     # call the parser
@@ -65,7 +71,8 @@ def main():
                 total_readout_time,
                 phase_encoding_direction,
                 n_cpus=n_cpus,
-                frames=list(range(510))
+                frames=list(range(510)),
+                debug=args.debug,
             )
             fmap_native.to_filename("fmap_native.nii.gz")
             dmap.to_filename("dmap.nii.gz")
