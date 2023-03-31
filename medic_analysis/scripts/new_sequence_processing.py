@@ -11,20 +11,18 @@ from . import parser
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"
 
 def main():
-
     # Create additional argument for multiprocessing
     parser.add_argument(
         "--multiproc",
-        type=bool,
-        help="Boolean flag to use multiprocessing. Defaults to False.",
-        default=False,
+        action="store_true",
+        help="Boolean flag to use multiprocessing."
     )
 
     # Create additional argument for debug mode
     parser.add_argument(
         "--debug",
         action="store_true",
-        help="Boolean flag to use debug mode. Defaults to False."
+        help="Boolean flag to use debug mode."
     )
 
     # call the parser
@@ -66,18 +64,6 @@ def main():
             ref_data = mag_imgs[0].dataobj[..., 0]
             nib.Nifti1Image(ref_data, mag_imgs[0].affine).to_filename("ref.nii")
 
-            # compute motion parameters
-            framewise_align(
-                "ref.nii",
-                mag[0].path,
-                "mcflirt"
-            )
-
-            # load in motion params, convert rotations to mm
-            motion_params = np.loadtxt("mcflirt.par")
-            motion_params[:, :3] = np.rad2deg(motion_params[:, :3])
-            motion_params[:, :3] = 50 * (np.pi / 180) * motion_params[:, :3]
-
             fmap_native, dmap, fmap = medic(
                 phase_imgs,
                 mag_imgs,
@@ -85,9 +71,8 @@ def main():
                 total_readout_time,
                 phase_encoding_direction,
                 n_cpus=n_cpus,
-                motion_params=motion_params,
                 frames=list(range(510)),
-                debug=args.debug
+                debug=args.debug,
             )
             fmap_native.to_filename("fmap_native.nii.gz")
             dmap.to_filename("dmap.nii.gz")

@@ -1,10 +1,12 @@
 import nibabel as nib
+import numpy as np
 from bids import BIDSLayout
 from memori.pathman import PathManager as PathMan
+from warpkit.unwrap import create_brain_mask
 from . import (
     parser,
 )
-from medic_analysis.common import data_plotter, render_dynamic_figure, plt
+from medic_analysis.common import data_plotter, render_dynamic_figure, plt, sns
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/HEADPOSITIONSUSTEST"
@@ -130,12 +132,29 @@ def main():
             )
 
         # compute tSNR for first static field map
+        tSNR_medic = []
+        brain_mask_medic = []
+        tSNR_topup = []
+        brain_mask_topup = []
         tSNR_difference = []
         for medic, topup in zip(corrected_data_medic, corrected_data_topup):
-            tSNR_medic = medic.get_fdata().mean(axis=3) / medic.get_fdata().std(axis=3)
-            tSNR_topup = topup.get_fdata().mean(axis=3) / topup.get_fdata().std(axis=3)
-            tSNR_difference.append(tSNR_medic - tSNR_topup)
-        # plot tSNR
+            tSNR_medic.append(medic.get_fdata().mean(axis=3) / medic.get_fdata().std(axis=3))
+            brain_mask_medic.append(create_brain_mask(medic.get_fdata().mean(axis=3), 0))
+            tSNR_topup.append(topup.get_fdata().mean(axis=3) / topup.get_fdata().std(axis=3))
+            brain_mask_topup.append(create_brain_mask(topup.get_fdata().mean(axis=3), 0))
+            tSNR_difference.append(tSNR_medic[-1] - tSNR_topup[-1])
+            # plot tSNR
+            f1 = plt.figure(figsize=(16, 8), layout="constrained")
+            data_plotter(
+                [tSNR_medic[-1], tSNR_topup[-1]], colorbar=True, colorbar_label="tSNR", vmax=50, vmin=0, figure=f1
+            )
+            f1.text(0.6, 0.51, f"(A) MEDIC", ha="center")
+            f1.text(0.6, 0.01, f"(B) TOPUP", ha="center")
+            plt.show()
+            nib.Nifti1Image(tSNR_medic[-1], medic.affine).to_filename("tSNR_medic.nii.gz")
+            nib.Nifti1Image(tSNR_topup[-1], topup.affine).to_filename("tSNR_topup.nii.gz")
+            breakpoint()
+
         f1 = plt.figure(figsize=(16, 8), layout="constrained")
         f1_subfigs = f1.subfigures(1, 2)
         data_plotter(
@@ -178,16 +197,49 @@ def main():
         labels = [label.replace(" ", "_") for label in labels]
 
         # make transients output directory
-        transients_out = (PathMan(args.output_dir) / "transients")
+        transients_out = PathMan(args.output_dir) / "transients"
         transients_out.mkdir(exist_ok=True)
 
+        # load motion parameters
+        motion_params = []
+        for idx in args.transient_head_position_run_idx:
+            run = idx + 1
+            motion_params.append(np.loadtxt(
+                PathMan(args.output_dir) / "framewise_align" / "func" / f"run{run:02d}" / f"run{run:02d}.par"
+            ))
+            motion_params[-1][:, :3] = np.rad2deg(motion_params[-1][:, :3])
+
         # render transient field map videos
-        for fmap, label in zip(transient_fieldmaps, labels):
+        def set_moco_label(motion_params):
+            def set_figure_labels(fig, frame_num):
+                # set label on figure
+                fig.text(
+                    0.5,
+                    0.7,
+                    f"Frame {frame_num}"
+                    f"\nMotion Parameters:"
+                    f"\nrot-x: {motion_params[frame_num, 0]:.2f} deg"
+                    f"\nrot-y: {motion_params[frame_num, 1]:.2f} deg"
+                    f"\nrot-z: {motion_params[frame_num, 2]:.2f} deg"
+                    f"\ntx: {motion_params[frame_num, 3]:.2f} mm"
+                    f"\nty: {motion_params[frame_num, 4]:.2f} mm"
+                    f"\ntz: {motion_params[frame_num, 5]:.2f} mm",
+                    ha="center",
+                )
+
+                # return figure
+                return fig
+
+            # return function
+            return set_figure_labels
+
+        for fmap, moco, label in zip(transient_fieldmaps, motion_params, labels):
             render_dynamic_figure(
                 str(transients_out / f"{label}.mp4"),
                 [fmap],
                 colorbar=True,
                 colorbar_alt_range=True,
+                figure_fx=set_moco_label(moco),
             )
 
     # plot static field maps
