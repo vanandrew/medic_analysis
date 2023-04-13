@@ -77,8 +77,8 @@ def main():
             skip = 0
             for i, col in enumerate(motion_params_premedic.columns):
                 # get the power for each motion parameteradd_subplot(2, 3)
-                freqs, power_premedic = ss.welch(motion_params_premedic[col], fs=1 / 1.761)
-                freqs, power_postmedic = ss.welch(motion_params_postmedic[col], fs=1 / 1.761)
+                freqs, power_premedic = ss.welch(motion_params_premedic[col], fs=1 / 1.761, detrend="linear")
+                freqs, power_postmedic = ss.welch(motion_params_postmedic[col], fs=1 / 1.761, detrend="linear")
 
                 # plot the power
                 ax = sns.lineplot(x=freqs[skip:], y=power_premedic[skip:], ax=axes[i // 3, i % 3])  # type: ignore

@@ -153,7 +153,6 @@ def main():
             plt.show()
             nib.Nifti1Image(tSNR_medic[-1], medic.affine).to_filename("tSNR_medic.nii.gz")
             nib.Nifti1Image(tSNR_topup[-1], topup.affine).to_filename("tSNR_topup.nii.gz")
-            breakpoint()
 
         f1 = plt.figure(figsize=(16, 8), layout="constrained")
         f1_subfigs = f1.subfigures(1, 2)

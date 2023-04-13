@@ -4,12 +4,13 @@ import nibabel as nib
 from memori.logging import run_process
 from memori.pathman import PathManager as PathMan
 from warpkit.distortion import medic
+from typing import cast
 
 
 if os.environ.get("ROMEO_PATH") is None:
     ROMEO_PATH = "/home/usr/vana/GMT2/Andrew/romeo/compiled/bin/romeo"
 else:
-    ROMEO_PATH = os.environ.get("ROMEO_PATH")
+    ROMEO_PATH = cast(str, os.environ.get("ROMEO_PATH"))
 
 
 def run_medic(
@@ -21,6 +22,7 @@ def run_medic(
     run,
     num_frames=100,
     motion_params=None,
+    border_size=3,
 ):
     if motion_params is not None:
         motion_params = np.loadtxt(motion_params)[:num_frames, :]
@@ -35,6 +37,7 @@ def run_medic(
         echo_times,
         total_readout_time,
         phase_encoding_direction,
+        border_size=border_size,
         frames=[i for i in range(num_frames)],
         motion_params=motion_params,
         n_cpus=8,

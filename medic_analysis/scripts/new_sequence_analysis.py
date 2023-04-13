@@ -104,6 +104,11 @@ def main():
         movies = PathMan(args.output_dir) / "movies"
         movies.mkdir(exist_ok=True)
 
+        # runs = []
+        # for idx in range(1):
+        #     run = idx + 1
+        #     runs.append(nib.load(PathMan(args.output_dir) / f"run-{run:02d}" / "fmap_native.nii.gz"))
+
         # loop over runs
         for idx, img in enumerate(runs):
             render_dynamic_figure(

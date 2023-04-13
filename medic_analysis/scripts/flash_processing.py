@@ -227,7 +227,7 @@ def main():
             total_readout_time,
             phase_encoding_direction,
             1,
-            motion_params="me_framewise_align.par",
+            border_size=6,
         )
         if PathMan("run01").exists():
             for f in PathMan("run01").glob("*"):

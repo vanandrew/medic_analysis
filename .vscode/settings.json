@@ -1,3 +1,9 @@
 {
-    "python.analysis.typeCheckingMode": "basic"
+    "python.analysis.typeCheckingMode": "basic",
+    "C_Cpp.files.exclude": {
+        "**/.vscode": true,
+        "**/.vs": true
+    },
+    "explorer.decorations.badges": true,
+    "explorer.decorations.colors": true
 }

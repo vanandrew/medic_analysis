@@ -10,6 +10,7 @@ from . import parser
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"
 
+
 def main():
     # Create additional argument for multiprocessing
     parser.add_argument(

@@ -204,7 +204,7 @@ def main():
                 total_readout_time,
                 phase_encoding_direction,
                 int(run),
-                motion_params=str(output_dir / "framewise_align" / "func" / f"run{run:02d}" / f"run{run:02d}.par")
+                border_size=5,
             )
 
     # do the same for fmaps

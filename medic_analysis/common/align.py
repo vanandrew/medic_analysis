@@ -12,6 +12,8 @@ def framewise_align(ref_frame, img_file, out_prefix):
             ref_frame,
             "-out",
             out_prefix,
+            "-cost",
+            "leastsquares",
             "-stats",
             "-mats",
             "-plots",

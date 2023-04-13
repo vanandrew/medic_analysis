@@ -11,9 +11,14 @@ import pydicom
 from warpkit.distortion import medic
 from warpkit.unwrap import create_brain_mask
 from warpkit.utilities import displacement_map_to_field, resample_image
-from medic_analysis.common import framewise_align, sns, plt
+from medic_analysis.common import apply_framewise_mats, framewise_align, sns, plt, run_topup
 import simplebrainviewer as sbv
-from . import parser
+from . import (
+    parser,
+    PED_TABLE,
+    POLARITY_IDX,
+)
+
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/RESPTEST"
@@ -173,10 +178,9 @@ def main():
             TEs = [m.get_metadata()["EchoTime"] * 1000 for m in mag]
             total_readout_time = mag[0].get_metadata()["TotalReadoutTime"]
             phase_encoding_direction = mag[0].get_metadata()["PhaseEncodingDirection"]
-            slice_times = np.array(phase[0].get_metadata()["SliceTiming"])
 
             # get reference frame
-            ref_data = mag_imgs[0].dataobj[..., 0]
+            ref_data = mag_imgs[0].dataobj[..., 100]
             nib.Nifti1Image(ref_data, mag_imgs[0].affine).to_filename("ref.nii")
 
             # compute motion parameters
@@ -189,19 +193,20 @@ def main():
             motion_params = motion_params[:args.num_frames]
 
             # run medic
-            fmap_native, dmap, fmap = medic(
-                phase_imgs,
-                mag_imgs,
-                TEs,
-                total_readout_time,
-                phase_encoding_direction,
-                n_cpus=8,
-                motion_params=motion_params,
-                frames=list(range(args.num_frames)),
-            )
-            fmap_native.to_filename("fmap_native.nii.gz")
-            dmap.to_filename("dmap.nii.gz")
-            fmap.to_filename("fmap.nii.gz")
+            # fmap_native, dmap, fmap = medic(
+            #     phase_imgs,
+            #     mag_imgs,
+            #     TEs,
+            #     total_readout_time,
+            #     phase_encoding_direction,
+            #     n_cpus=8,
+            #     frames=list(range(args.num_frames)),
+            #     border_size=5,
+            #     svd_filt=30,
+            # )
+            # fmap_native.to_filename("fmap_native.nii.gz")
+            # dmap.to_filename("dmap.nii.gz")
+            # fmap.to_filename("fmap.nii.gz")
 
             # make brain mask of reference image
             ref_img = nib.load("ref.nii")
@@ -471,5 +476,48 @@ def main():
             corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
             corrected_img.to_filename("medic_corrected.nii.gz")
 
+            # get new ref img
+            new_ref_img = nib.Nifti1Image(corrected_data[..., 100], first_echo_img.affine)
+            new_ref_img.to_filename("new_ref.nii")
+
             # compute motion parameters
-            framewise_align("ref.nii", "medic_corrected", "mcflirt_corrected")
+            framewise_align("new_ref.nii", "medic_corrected", "mcflirt_corrected")
+
+            # apply moco params from distorted align
+            apply_framewise_mats("new_ref.nii", "medic_corrected", "mcflirt.mat", "mcflirt_dcorrected")
+
+            # get the SE fmap (only first run)
+            se_fmaps = [
+                layout.get(datatype="fmap", suffix="epi", extension="nii.gz", direction="PA", run="01")[0],
+                layout.get(datatype="fmap", suffix="epi", extension="nii.gz", direction="AP", run="01")[0],
+            ]
+
+            # now process the SE field map
+            se_fmap_dir = output_dir / "topup"
+            se_fmap_dir.mkdir(exist_ok=True)
+            with working_directory(se_fmap_dir.path):
+                # grab the readout time and phase encoding directions
+                total_readout_time = se_fmaps[0].get_metadata()["TotalReadoutTime"]
+                phase_encoding_directions = [
+                    se_fmaps[0].get_metadata()["PhaseEncodingDirection"],
+                    se_fmaps[1].get_metadata()["PhaseEncodingDirection"],
+                ]
+
+                # write acqparams file
+                with open("acqparams.txt", "w") as f:
+                    ped_idx = PED_TABLE[phase_encoding_directions[0]]
+                    for _ in range(se_fmaps[0].get_image().shape[-1]):
+                        f.write(f"{ped_idx} {total_readout_time}\n")
+                    ped_idx = PED_TABLE[phase_encoding_directions[1]]
+                    for _ in range(se_fmaps[1].get_image().shape[-1]):
+                        f.write(f"{ped_idx} {total_readout_time}\n")
+                acqparams = "acqparams.txt"
+
+                # now concatenate the data
+                if not PathMan("imain.nii.gz").exists():
+                    imain = nib.concat_images([se_fmaps[0].get_image(), se_fmaps[1].get_image()], axis=3)
+                    imain.to_filename("imain.nii.gz")
+                imain = "imain.nii.gz"
+
+                # call topup
+                run_topup(imain, acqparams, "./", "iout", "fout", "dfout")
