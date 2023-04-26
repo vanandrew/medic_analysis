@@ -16,8 +16,8 @@ from memori.logging import run_process
 
 # plot settings
 warnings.filterwarnings("ignore")
-sns.set(font="Lato", style="dark")
-plt.style.use("dark_background")
+sns.set(font="Lato", font_scale=1.5, style="white")
+plt.style.use("seaborn-white")
 
 
 def normalize(x: npt.NDArray) -> npt.NDArray:
@@ -128,7 +128,7 @@ def subplot_imshow(
     Tuple[Axes, AxesImage]
         Axes and image.
     """
-    ax = f.add_subplot(*entry, frame_on=False, anchor="C")
+    ax = f.add_subplot(*entry, frame_on=False, anchor="C")  # type: ignore
     im = ax.imshow(data, origin="lower", cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_xticklabels([])
     ax.set_yticklabels([])
@@ -139,8 +139,8 @@ def data_plotter(
     imgs: Union[List[npt.NDArray], List[nib.Nifti1Image]],
     colormaps: Union[List[str], str] = "icefire",
     slices: Tuple[int, int, int] = (55, 55, 36),
-    vmin: float = -100,
-    vmax: float = 150,
+    vmin: Union[List[float], float] = -100,
+    vmax: Union[List[float], float] = 150,
     colorbar: bool = False,
     colorbar_label: str = "Hz",
     colorbar_labelpad: int = -5,
@@ -174,6 +174,18 @@ def data_plotter(
         colormaps = [colormaps] * len(imgs)
     colormaps = cast(List[str], colormaps)
 
+    # extend vmin into list if a float
+    if type(vmin) is not list:
+        vmin = cast(float, vmin)
+        vmin = [vmin] * len(imgs)
+    vmin = cast(List[float], vmin)
+
+    # extend vmax into list if a float
+    if type(vmax) is not list:
+        vmax = cast(float, vmax)
+        vmax = [vmax] * len(imgs)
+    vmax = cast(List[float], vmax)
+
     # check if existing figure passed in
     # if it is, use it
     # if not, just create a new figure
@@ -188,14 +200,14 @@ def data_plotter(
     # plot each img on a row
     plot_idx = 1
     fig_row = []
-    for cmap, img in zip(colormaps, imgs):
+    for cmap, vmin_i, vmax_i, img in zip(colormaps, vmin, vmax, imgs):
         if len(img.shape) == 4:
             img = img[:, :, :, frame_num]
-        ax1, axi1 = subplot_imshow(f, img[:, :, slices[2]].T, (*grid_size, plot_idx), vmin, vmax, cmap)
+        ax1, axi1 = subplot_imshow(f, img[:, :, slices[2]].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap)
         plot_idx += 1
-        ax2, axi2 = subplot_imshow(f, img[slices[0], :, :].T, (*grid_size, plot_idx), vmin, vmax, cmap)
+        ax2, axi2 = subplot_imshow(f, img[slices[0], :, :].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap)
         plot_idx += 1
-        ax3, axi3 = subplot_imshow(f, img[:, slices[1], :].T, (*grid_size, plot_idx), vmin, vmax, cmap)
+        ax3, axi3 = subplot_imshow(f, img[:, slices[1], :].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap)
         plot_idx += 1
         fig_row.append(((ax1, axi1), (ax2, axi2), (ax3, axi3)))
 
@@ -214,7 +226,7 @@ def data_plotter(
         cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, rotation=90)
         # for colorbar alt range
         if colorbar_alt_range:
-            alt_vmin, alt_vmax = colorbar_alt_range_fx(vmin, vmax)
+            alt_vmin, alt_vmax = colorbar_alt_range_fx(vmin[colorbar_source_idx[0]], vmax[colorbar_source_idx[0]])
             cax = cbar.ax.twinx()
             cax.set_ylim(alt_vmin, alt_vmax)
             cax.set_ylabel(colorbar_alt_label, labelpad=colorbar_alt_labelpad, rotation=90)
@@ -234,7 +246,7 @@ def data_plotter(
         cbar.ax.set_ylabel(colorbar2_label, labelpad=colorbar2_labelpad, rotation=90)
         # for colorbar alt range
         if colorbar2_alt_range:
-            alt_vmin, alt_vmax = colorbar2_alt_range_fx(vmin, vmax)
+            alt_vmin, alt_vmax = colorbar2_alt_range_fx(vmin[colorbar2_source_idx[0]], vmax[colorbar2_source_idx[0]])
             cax = cbar.ax.twinx()
             cax.yaxis.set_ticks_position("left")
             cax.set_ylim(alt_vmin, alt_vmax)

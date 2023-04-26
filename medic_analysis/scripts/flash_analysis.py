@@ -19,8 +19,8 @@ def main():
     if args.bids_dir is None:
         args.bids_dir = BIDS_DATA_DIR
 
-    # Load the dataset
-    layout = BIDSLayout(args.bids_dir, database_path=args.bids_dir)
+    # # Load the dataset
+    # layout = BIDSLayout(args.bids_dir, database_path=args.bids_dir)
 
     # set output dir
     if args.output_dir is None:
@@ -41,19 +41,22 @@ def main():
     medic_fmap_img = nib.load(medic_fmap.path)
 
     # now mask the data
-    flash_fmap_data = flash_fmap_img.get_fdata()
-    topup_fmap_data = topup_fmap_img.get_fdata()[..., 0]
-    medic_fmap_data = medic_fmap_img.get_fdata()[..., 0]
+    flash_fmap_data = flash_fmap_img.get_fdata() * flash_mask_img.get_fdata()
+    topup_fmap_data = topup_fmap_img.get_fdata()[..., 0] * flash_mask_img.get_fdata()
+    medic_fmap_data = medic_fmap_img.get_fdata()[..., 0] * flash_mask_img.get_fdata()
 
     # make figure
     f = plt.figure(figsize=(16, 8), layout="constrained")
     sf = f.subfigures(1, 2)
 
+    crop = (slice(35, 225), slice(32, 222), slice(0, 176))
+    slices = (95, 100, 65)
+
     # plot field maps
     data_plotter(
-        [topup_fmap_data, flash_fmap_data, medic_fmap_data],
+        [topup_fmap_data[crop], flash_fmap_data[crop], medic_fmap_data[crop]],
         colormaps="gray",
-        slices=(125, 165, 65),
+        slices=slices,
         colorbar=True,
         colorbar_alt_range=True,
         figure=sf[0],
@@ -67,8 +70,8 @@ def main():
     topup_diff = (flash_fmap_data - topup_fmap_data)
     medic_diff = (flash_fmap_data - medic_fmap_data)
     data_plotter(
-        [topup_diff, medic_diff],
-        slices=(125, 165, 65),
+        [topup_diff[crop], medic_diff[crop]],
+        slices=slices,
         vmin=-100,
         vmax=100,
         colorbar2=True,

@@ -2,6 +2,7 @@ import logging
 import nibabel as nib
 import numpy as np
 from bids import BIDSLayout
+from bids.layout import BIDSImageFile
 from memori.stage import Stage
 from memori.pathman import PathManager as PathMan
 from memori.helpers import working_directory
@@ -82,7 +83,7 @@ def main():
     # Get the ME-EPI data for each of the runs
     # Get the magnitude
     me_epi_mag_data = [
-        echoes
+        list(echoes)
         for echoes in zip(
             *[
                 layout.get(datatype="func", extension="nii.gz", echo=echo, part="mag", suffix="bold")
@@ -187,7 +188,7 @@ def main():
     with working_directory(medic_output.path):
         for idx, run in zip(range(n_runs), layout.get_runs(datatype="func")):
             PathMan(f"run{run:02d}").mkdir(exist_ok=True)
-            (hash_outputs / f"run{run:02d}" / "medic.stage").unlink(missing_ok=True)
+            # (hash_outputs / f"run{run:02d}" / "medic.stage").unlink(missing_ok=True)
 
             # get metadata
             echo_times = [me_epi_phase_data[idx][n].get_metadata()["EchoTime"] * 1000 for n in range(n_echos)]
@@ -204,7 +205,7 @@ def main():
                 total_readout_time,
                 phase_encoding_direction,
                 int(run),
-                border_size=5,
+                border_size=3,
             )
 
     # do the same for fmaps
@@ -303,12 +304,9 @@ def main():
             current_run = PathMan(f"run{run:02d}")
             current_run.mkdir(exist_ok=True)
 
-            # we only want to correct the first echo
-            # so grab the path for it
-            first_echo_path = me_epi_mag_data[idx][0].path
-
-            # now load the first echo data
-            first_echo_img = nib.load(first_echo_path)
+            # load the second echo data
+            second_echo_path = me_epi_mag_data[idx][1].path
+            second_echo_img = nib.load(second_echo_path)
 
             # load the reference img
             ref_img = nib.load(me_epi_ref_path)
@@ -322,14 +320,14 @@ def main():
                 dmaps_img = nib.load(displacement_maps)
 
                 # for each frame apply the correction
-                corrected_data = np.zeros((*first_echo_img.shape[:3], args.num_frames))
+                corrected_data = np.zeros((*second_echo_img.shape[:3], args.num_frames))
                 for frame_idx in range(args.num_frames):
                     logging.info(f"Correcting Frame: {frame_idx}")
                     # get the frame to correct
-                    frame_data = first_echo_img.dataobj[..., frame_idx]
+                    frame_data = second_echo_img.dataobj[..., frame_idx]
 
                     # make into image
-                    frame_img = nib.Nifti1Image(frame_data, first_echo_img.affine)
+                    frame_img = nib.Nifti1Image(frame_data, second_echo_img.affine)
 
                     # get the dmap for this frame
                     dmap_data = dmaps_img.dataobj[..., frame_idx]
@@ -347,8 +345,21 @@ def main():
                     corrected_data[..., frame_idx] = corrected_img.get_fdata()
 
                 # save the corrected data
-                corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
+                corrected_img = nib.Nifti1Image(corrected_data, second_echo_img.affine)
                 corrected_img.to_filename("medic_corrected.nii.gz")
+
+                # now apply framewise alignments
+                stage_apply_framewise_mats = Stage(
+                    apply_framewise_mats,
+                    stage_name="apply_framewise_mats_func_corrected",
+                    hash_output=(hash_outputs / f"run{run:02d}").path,
+                )
+                stage_apply_framewise_mats.run(
+                    "medic_corrected.nii.gz",
+                    "medic_corrected.nii.gz",
+                    (func_aligned_output / f"run{run:02d}" / f"run{run:02d}.mat").path,
+                    "medic_corrected_aligned.nii.gz",
+                )
 
             # now correct with topup
             topup_out = current_run / "topup"
@@ -357,24 +368,39 @@ def main():
                 # load the topup displacment field (use first field)
                 displacement_field = nib.load(output_dir / "fieldmaps" / "topup" / f"run{run:02d}" / "dfout_01.nii.gz")
 
-                # get the data
-                field_data = displacement_field.get_fdata()
-
-                # make into image
-                field_img = nib.Nifti1Image(field_data, ref_img.affine)
-
-                # convert to itk format
-                itk_field_img = convert_warp(field_img, "fsl", "itk")
+                # apply framewise alignments to distorted 2nd echo
+                stage_apply_framewise_mats = Stage(
+                    apply_framewise_mats,
+                    stage_name="apply_framewise_mats_func_distorted",
+                    hash_output=(hash_outputs / f"run{run:02d}").path,
+                )
+                stage_apply_framewise_mats.run(
+                    second_echo_path,
+                    second_echo_path,
+                    (func_aligned_output / f"run{run:02d}" / f"run{run:02d}.mat").path,
+                    "topup_aligned.nii.gz",
+                )
+                topup_aligned_img = nib.load("topup_aligned.nii.gz")
 
                 # for each frame apply the correction
-                corrected_data = np.zeros((*first_echo_img.shape[:3], args.num_frames))
+                corrected_data = np.zeros((*topup_aligned_img.shape[:3], args.num_frames))
                 for frame_idx in range(args.num_frames):
                     logging.info(f"Correcting Frame: {frame_idx}")
-                    # get the frame to correct
-                    frame_data = first_echo_img.dataobj[..., frame_idx]
+
+                    # get the data
+                    field_data = displacement_field.get_fdata()
 
                     # make into image
-                    frame_img = nib.Nifti1Image(frame_data, first_echo_img.affine)
+                    field_img = nib.Nifti1Image(field_data, ref_img.affine)
+
+                    # convert to itk format
+                    itk_field_img = convert_warp(field_img, "fsl", "itk")
+
+                    # get the frame to correct
+                    frame_data = topup_aligned_img.dataobj[..., frame_idx]
+
+                    # make into image
+                    frame_img = nib.Nifti1Image(frame_data, topup_aligned_img.affine)
 
                     # apply the correction
                     corrected_img = resample_image(ref_img, frame_img, itk_field_img)
@@ -382,5 +408,5 @@ def main():
                     # store the corrected_frame
                     corrected_data[..., frame_idx] = corrected_img.get_fdata()
                 # save the corrected data
-                corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
-                corrected_img.to_filename("topup_corrected.nii.gz")
+                corrected_img = nib.Nifti1Image(corrected_data, second_echo_img.affine)
+                corrected_img.to_filename("topup_aligned_corrected.nii.gz")

@@ -23,6 +23,7 @@ def run_medic(
     num_frames=100,
     motion_params=None,
     border_size=3,
+    svd_filt=30,
 ):
     if motion_params is not None:
         motion_params = np.loadtxt(motion_params)[:num_frames, :]
@@ -41,6 +42,7 @@ def run_medic(
         frames=[i for i in range(num_frames)],
         motion_params=motion_params,
         n_cpus=8,
+        svd_filt=svd_filt,
     )
     # save the data
     fmap_native.to_filename(PathMan(f"run{run:02d}") / "fmap_native.nii.gz")

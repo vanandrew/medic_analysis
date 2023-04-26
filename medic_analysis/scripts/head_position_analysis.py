@@ -85,34 +85,45 @@ def main():
         static_fieldmaps = []
         for idx in args.static_head_position_run_idx:
             run = idx + 1
-            static_fieldmaps.append(nib.load(medic_fieldmaps / f"run{run:02d}" / "fmap.nii.gz"))
+            static_fieldmaps.append(nib.load(medic_fieldmaps / f"run{run:02d}" / "fmap.nii.gz").dataobj)
+
+        # plot range
+        vlims = (-50, 50)
 
         # plot static field maps
         f0 = plt.figure(figsize=(16, 8), layout="constrained")
         f0_subfigs = f0.subfigures(1, 2)
         data_plotter(
-            [fmap for fmap in static_fieldmaps[:4]],
+            [
+                static_fieldmaps[1][..., 0] - static_fieldmaps[0][..., 0],
+                static_fieldmaps[3][..., 0] - static_fieldmaps[0][..., 0],
+                static_fieldmaps[5][..., 0] - static_fieldmaps[0][..., 0],
+            ],
             figure=f0_subfigs[0],
-            frame_num=20,
             colorbar=True,
             colorbar_alt_range=True,
+            vmin=vlims[0],
+            vmax=vlims[1],
         )
-        f0_subfigs[0].text(0.6, 0.76, f"(A) {args.labels[0]}", ha="center")
-        f0_subfigs[0].text(0.6, 0.51, f"(B) {args.labels[1]}", ha="center")
-        f0_subfigs[0].text(0.6, 0.26, f"(C) {args.labels[2]}", ha="center")
-        f0_subfigs[0].text(0.6, 0.01, f"(D) {args.labels[3]}", ha="center")
+        f0_subfigs[0].text(0.6, 0.67, f"(A) {args.labels[1]}", ha="center")
+        f0_subfigs[0].text(0.6, 0.33, f"(B) {args.labels[3]}", ha="center")
+        f0_subfigs[0].text(0.6, 0.01, f"(C) {args.labels[5]}", ha="center")
 
         data_plotter(
-            [fmap for fmap in static_fieldmaps[4:]],
+            [
+                static_fieldmaps[2][..., 0] - static_fieldmaps[0][..., 0],
+                static_fieldmaps[4][..., 0] - static_fieldmaps[0][..., 0],
+                static_fieldmaps[6][..., 0] - static_fieldmaps[0][..., 0],
+            ],
             figure=f0_subfigs[1],
-            frame_num=20,
             colorbar2=True,
             colorbar2_alt_range=True,
+            vmin=vlims[0],
+            vmax=vlims[1],
         )
-        f0_subfigs[1].text(0.4, 0.76, f"(E) {args.labels[4]}", ha="center")
-        f0_subfigs[1].text(0.4, 0.51, f"(F) {args.labels[5]}", ha="center")
-        f0_subfigs[1].text(0.4, 0.26, f"(G) {args.labels[6]}", ha="center")
-        f0_subfigs[1].text(0.4, 0.01, f"(H) {args.labels[14]}", ha="center")
+        f0_subfigs[1].text(0.4, 0.67, f"(D) {args.labels[2]}", ha="center")
+        f0_subfigs[1].text(0.4, 0.33, f"(E) {args.labels[4]}", ha="center")
+        f0_subfigs[1].text(0.4, 0.01, f"(F) {args.labels[6]}", ha="center")
 
     if args.plot_only is None or 1 in args.plot_only:
         # load up corrected images
@@ -203,9 +214,11 @@ def main():
         motion_params = []
         for idx in args.transient_head_position_run_idx:
             run = idx + 1
-            motion_params.append(np.loadtxt(
-                PathMan(args.output_dir) / "framewise_align" / "func" / f"run{run:02d}" / f"run{run:02d}.par"
-            ))
+            motion_params.append(
+                np.loadtxt(
+                    PathMan(args.output_dir) / "framewise_align" / "func" / f"run{run:02d}" / f"run{run:02d}.par"
+                )
+            )
             motion_params[-1][:, :3] = np.rad2deg(motion_params[-1][:, :3])
 
         # render transient field map videos
