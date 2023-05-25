@@ -1,5 +1,5 @@
 {
-    "python.analysis.typeCheckingMode": "basic",
+    "python.analysis.typeCheckingMode": "off",
     "C_Cpp.files.exclude": {
         "**/.vscode": true,
         "**/.vs": true

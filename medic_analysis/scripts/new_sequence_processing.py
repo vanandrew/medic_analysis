@@ -73,8 +73,10 @@ def main():
                 phase_encoding_direction,
                 n_cpus=n_cpus,
                 frames=list(range(510)),
+                svd_filt=5,
                 debug=args.debug,
             )
             fmap_native.to_filename("fmap_native.nii.gz")
             dmap.to_filename("dmap.nii.gz")
             fmap.to_filename("fmap.nii.gz")
+        break

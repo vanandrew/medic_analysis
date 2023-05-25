@@ -61,26 +61,28 @@ def main():
         colorbar_alt_range=True,
         figure=sf[0],
     )
-    # figure label text
-    sf[0].text(0.6, 0.67, "(A) PE-Polar (topup)", ha="center")
-    sf[0].text(0.6, 0.35, "(B) FLASH (ROMEO)", ha="center")
-    sf[0].text(0.6, 0.02, "(C) ME-EPI (MEDIC)", ha="center")
+    sbs = sf[0].get_axes()
+    sbs[1].set_title(f"(A) PE-Polar (topup)", loc="center", y=-0.25)
+    sbs[4].set_title(f"(B) FLASH (ROMEO)", loc="center", y=-0.25)
+    sbs[7].set_title(f"(C) ME-EPI (MEDIC)", loc="center", y=-0.25)
 
     # compute difference from flash
-    topup_diff = (flash_fmap_data - topup_fmap_data)
-    medic_diff = (flash_fmap_data - medic_fmap_data)
+    fmap_diff = (medic_fmap_data - topup_fmap_data)
+    topup_diff = (topup_fmap_data - flash_fmap_data)
+    medic_diff = (medic_fmap_data - flash_fmap_data)
     data_plotter(
-        [topup_diff[crop], medic_diff[crop]],
+        [fmap_diff[crop], topup_diff[crop], medic_diff[crop]],
         slices=slices,
-        vmin=-100,
-        vmax=100,
+        vmin=-50,
+        vmax=50,
         colorbar2=True,
         colorbar2_alt_range=True,
         figure=sf[1],
     )
-    # figure label text
-    sf[1].text(0.4, 0.59, "(D) FLASH (ROMEO) - PE-Polar (topup)", ha="center")
-    sf[1].text(0.4, 0.09, "(E) FLASH (ROMEO) - ME-EPI (MEDIC)", ha="center")
+    sbs = sf[1].get_axes()
+    sbs[1].set_title(f"(D) ME-EPI (MEDIC) - PE-Polar (topup)", loc="center", y=-0.25)
+    sbs[4].set_title(f"(E) PE-Polar (topup) - FLASH (ROMEO)", loc="center", y=-0.25)
+    sbs[7].set_title(f"(F) ME-EPI (MEDIC) - FLASH (ROMEO)", loc="center", y=-0.25)
 
     # plot figures
     plt.show()

@@ -17,6 +17,7 @@ dependencies = [
   "memori >= 0.2.1",
   "warpkit >= 0.0.1",
   "numpy >= 1.23.3",
+  "hdf5storage >= 0.1.19",
 ]
 
 [build-system]

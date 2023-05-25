@@ -81,11 +81,17 @@ def main():
     if args.plot_only is None or 0 in args.plot_only:
         # load field map files
         medic_fieldmaps = PathMan(args.output_dir) / "fieldmaps" / "medic_aligned"
+        # load topup field map in neutral position as reference
+        topup_fieldmap = nib.load(
+            PathMan(args.output_dir) / "fieldmaps" / "topup" / "run01" / "fout.nii.gz"
+        ).get_fdata()
         # load static field map runs
         static_fieldmaps = []
         for idx in args.static_head_position_run_idx:
             run = idx + 1
             static_fieldmaps.append(nib.load(medic_fieldmaps / f"run{run:02d}" / "fmap.nii.gz").dataobj)
+        # load mask
+        mask = nib.load(PathMan(args.output_dir) / "references" / "me_epi_ref_bet_mask.nii.gz").get_fdata()
 
         # plot range
         vlims = (-50, 50)
@@ -95,9 +101,9 @@ def main():
         f0_subfigs = f0.subfigures(1, 2)
         data_plotter(
             [
-                static_fieldmaps[1][..., 0] - static_fieldmaps[0][..., 0],
-                static_fieldmaps[3][..., 0] - static_fieldmaps[0][..., 0],
-                static_fieldmaps[5][..., 0] - static_fieldmaps[0][..., 0],
+                (static_fieldmaps[1][..., 0] - static_fieldmaps[0][..., 0]) * mask,
+                (static_fieldmaps[3][..., 0] - static_fieldmaps[0][..., 0]) * mask,
+                (static_fieldmaps[5][..., 0] - static_fieldmaps[0][..., 0]) * mask,
             ],
             figure=f0_subfigs[0],
             colorbar=True,
@@ -105,15 +111,16 @@ def main():
             vmin=vlims[0],
             vmax=vlims[1],
         )
-        f0_subfigs[0].text(0.6, 0.67, f"(A) {args.labels[1]}", ha="center")
-        f0_subfigs[0].text(0.6, 0.33, f"(B) {args.labels[3]}", ha="center")
-        f0_subfigs[0].text(0.6, 0.01, f"(C) {args.labels[5]}", ha="center")
+        sbs = f0_subfigs[0].get_axes()
+        sbs[1].set_title(f"(A) {args.labels[1]} (14.957 deg)", loc="center", y=-0.5)
+        sbs[4].set_title(f"(C) {args.labels[3]} (10.642 deg)", loc="center", y=-0.5)
+        sbs[7].set_title(f"(E) {args.labels[5]} (10.789 deg)", loc="center", y=-0.5)
 
         data_plotter(
             [
-                static_fieldmaps[2][..., 0] - static_fieldmaps[0][..., 0],
-                static_fieldmaps[4][..., 0] - static_fieldmaps[0][..., 0],
-                static_fieldmaps[6][..., 0] - static_fieldmaps[0][..., 0],
+                (static_fieldmaps[2][..., 0] - static_fieldmaps[0][..., 0]) * mask,
+                (static_fieldmaps[4][..., 0] - static_fieldmaps[0][..., 0]) * mask,
+                (static_fieldmaps[6][..., 0] - static_fieldmaps[0][..., 0]) * mask,
             ],
             figure=f0_subfigs[1],
             colorbar2=True,
@@ -121,9 +128,57 @@ def main():
             vmin=vlims[0],
             vmax=vlims[1],
         )
-        f0_subfigs[1].text(0.4, 0.67, f"(D) {args.labels[2]}", ha="center")
-        f0_subfigs[1].text(0.4, 0.33, f"(E) {args.labels[4]}", ha="center")
-        f0_subfigs[1].text(0.4, 0.01, f"(F) {args.labels[6]}", ha="center")
+        sbs = f0_subfigs[1].get_axes()
+        sbs[1].set_title(f"(B) {args.labels[2]} (9.778 deg)", loc="center", y=-0.5)
+        sbs[4].set_title(f"(D) {args.labels[4]} (13.726 deg)", loc="center", y=-0.5)
+        sbs[7].set_title(f"(F) {args.labels[6]} (8.577 deg)", loc="center", y=-0.5)
+        f0.suptitle("Field map difference from neutral position (Position - Neutral)")
+
+        # plot static field maps against topup neutral
+        f1 = plt.figure(figsize=(16, 8), layout="constrained")
+        f1_subfigs = f1.subfigures(1, 2)
+        data_plotter(
+            [
+                (static_fieldmaps[0][..., 0] - topup_fieldmap) * mask,
+                (static_fieldmaps[1][..., 0] - topup_fieldmap) * mask,
+                (static_fieldmaps[3][..., 0] - topup_fieldmap) * mask,
+                (static_fieldmaps[5][..., 0] - topup_fieldmap) * mask,
+            ],
+            figure=f1_subfigs[0],
+            colorbar=True,
+            colorbar_alt_range=True,
+            vmin=vlims[0],
+            vmax=vlims[1],
+        )
+        sbs = f1_subfigs[0].get_axes()
+        sbs[1].set_title(f"(A) {args.labels[0]}", loc="center", y=-0.3)
+        sbs[4].set_title(f"(B) {args.labels[1]} (14.957 deg)", loc="center", y=-0.3)
+        sbs[7].set_title(f"(D) {args.labels[3]} (10.642 deg)", loc="center", y=-0.3)
+        sbs[10].set_title(f"(F) {args.labels[5]} (10.789 deg)", loc="center", y=-0.3)
+
+        data_plotter(
+            [
+                np.zeros_like(topup_fieldmap),
+                (static_fieldmaps[2][..., 0] - topup_fieldmap) * mask,
+                (static_fieldmaps[4][..., 0] - topup_fieldmap) * mask,
+                (static_fieldmaps[6][..., 0] - topup_fieldmap) * mask,
+            ],
+            figure=f1_subfigs[1],
+            colormaps=["icefire", "icefire", "icefire", "icefire"],
+            colorbar2=True,
+            colorbar2_alt_range=True,
+            colorbar2_source_idx=(1, 1),
+            vmin=vlims[0],
+            vmax=vlims[1],
+        )
+        sbs = f1_subfigs[1].get_axes()
+        sbs[0].set_visible(False)
+        sbs[2].set_visible(False)
+        sbs[1].set_title(f"X", loc="center", y=-0.3, color="black")
+        sbs[4].set_title(f"(C) {args.labels[2]} (9.778 deg)", loc="center", y=-0.3)
+        sbs[7].set_title(f"(E) {args.labels[4]} (13.726 deg)", loc="center", y=-0.3)
+        sbs[10].set_title(f"(G) {args.labels[6]} (8.577 deg)", loc="center", y=-0.3)
+        f1.suptitle("Field map difference from neutral position (MEDIC - TOPUP Neutral)")
 
     if args.plot_only is None or 1 in args.plot_only:
         # load up corrected images

@@ -16,8 +16,21 @@ from memori.logging import run_process
 
 # plot settings
 warnings.filterwarnings("ignore")
-sns.set(font="Lato", font_scale=1.5, style="white")
-plt.style.use("seaborn-white")
+# sns.set(font="Lato", font_scale=1.5, style="seaborn-white")
+sns.set(
+    font="Lato",
+    font_scale=1.5,
+    style="dark",
+    rc={
+        "axes.facecolor": "black",
+        "figure.facecolor": "black",
+        "axes.labelcolor": "white",
+        "axes.titlecolor": "white",
+        "text.color": "white",
+        "xtick.color": "white",
+        "ytick.color": "white",
+    },
+)
 
 
 def normalize(x: npt.NDArray) -> npt.NDArray:

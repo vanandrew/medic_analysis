@@ -2,7 +2,6 @@ import logging
 import nibabel as nib
 import numpy as np
 from bids import BIDSLayout
-from bids.layout import BIDSImageFile
 from memori.stage import Stage
 from memori.pathman import PathManager as PathMan
 from memori.helpers import working_directory
@@ -206,6 +205,8 @@ def main():
                 phase_encoding_direction,
                 int(run),
                 border_size=3,
+                svd_filt=1,
+                critical_freq=None,
             )
 
     # do the same for fmaps

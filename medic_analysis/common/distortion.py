@@ -21,15 +21,8 @@ def run_medic(
     phase_encoding_direction,
     run,
     num_frames=100,
-    motion_params=None,
-    border_size=3,
-    svd_filt=30,
+    **kwargs,
 ):
-    if motion_params is not None:
-        motion_params = np.loadtxt(motion_params)[:num_frames, :]
-        # load in motion params, convert rotations to mm
-        motion_params[:, :3] = np.rad2deg(motion_params[:, :3])
-        motion_params[:, :3] = 50 * (np.pi / 180) * motion_params[:, :3]
     phase_imgs = [nib.load(i) for i in phases]
     mag_imgs = [nib.load(i) for i in mag]
     fmap_native, dmap, fmap = medic(
@@ -38,11 +31,9 @@ def run_medic(
         echo_times,
         total_readout_time,
         phase_encoding_direction,
-        border_size=border_size,
         frames=[i for i in range(num_frames)],
-        motion_params=motion_params,
         n_cpus=8,
-        svd_filt=svd_filt,
+        **kwargs,
     )
     # save the data
     fmap_native.to_filename(PathMan(f"run{run:02d}") / "fmap_native.nii.gz")
