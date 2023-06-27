@@ -132,7 +132,7 @@ def main():
         sbs[1].set_title(f"(B) {args.labels[2]} (9.778 deg)", loc="center", y=-0.5)
         sbs[4].set_title(f"(D) {args.labels[4]} (13.726 deg)", loc="center", y=-0.5)
         sbs[7].set_title(f"(F) {args.labels[6]} (8.577 deg)", loc="center", y=-0.5)
-        f0.suptitle("Field map difference from neutral position (Position - Neutral)")
+        f0.suptitle("Motion-dependent field map differences (Position - Neutral Position)")
 
         # plot static field maps against topup neutral
         f1 = plt.figure(figsize=(16, 8), layout="constrained")

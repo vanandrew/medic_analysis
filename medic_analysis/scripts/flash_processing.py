@@ -228,6 +228,7 @@ def main():
             phase_encoding_direction,
             1,
             border_size=3,
+            svd_filt=5,
         )
         if PathMan("run01").exists():
             for f in PathMan("run01").glob("*"):

@@ -67,9 +67,9 @@ def main():
     sbs[7].set_title(f"(C) ME-EPI (MEDIC)", loc="center", y=-0.25)
 
     # compute difference from flash
-    fmap_diff = (medic_fmap_data - topup_fmap_data)
-    topup_diff = (topup_fmap_data - flash_fmap_data)
-    medic_diff = (medic_fmap_data - flash_fmap_data)
+    fmap_diff = medic_fmap_data - topup_fmap_data
+    topup_diff = topup_fmap_data - flash_fmap_data
+    medic_diff = medic_fmap_data - flash_fmap_data
     data_plotter(
         [fmap_diff[crop], topup_diff[crop], medic_diff[crop]],
         slices=slices,

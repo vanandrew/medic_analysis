@@ -205,7 +205,7 @@ def main():
                 phase_encoding_direction,
                 int(run),
                 border_size=3,
-                svd_filt=1,
+                svd_filt=5,
                 critical_freq=None,
             )
 

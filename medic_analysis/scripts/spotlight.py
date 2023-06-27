@@ -11,10 +11,10 @@ def main():
     winner_take_all_t2 = np.zeros((91, 109, 91))
     # loop over subjects
     for subject in all_struct_mat["AllDataStruct"][0]:
-        for session in subject['Sessions']['Pipeline'][0]:
+        for session in subject["Sessions"]["Pipeline"][0]:
             # get T1 spotlight data
-            MEDIC_t1 = np.squeeze(session['MEDIC']['T1Spotlight'])
-            TOPUP_t1 = np.squeeze(session['TOPUP']['T1Spotlight'])
+            MEDIC_t1 = np.squeeze(session["MEDIC"]["T1Spotlight"])
+            TOPUP_t1 = np.squeeze(session["TOPUP"]["T1Spotlight"])
             MEDIC_t1[np.isnan(MEDIC_t1)] = 0
             TOPUP_t1[np.isnan(TOPUP_t1)] = 0
             # compare MEDIC and TOPUP
@@ -27,8 +27,8 @@ def main():
             winner_take_all_t1 += MEDIC_win_t1 - TOPUP_win_t1
 
             # get T2 spotlight data
-            MEDIC_t2 = np.squeeze(session['MEDIC']['T2Spotlight'])
-            TOPUP_t2 = np.squeeze(session['TOPUP']['T2Spotlight'])
+            MEDIC_t2 = np.squeeze(session["MEDIC"]["T2Spotlight"])
+            TOPUP_t2 = np.squeeze(session["TOPUP"]["T2Spotlight"])
             MEDIC_t2[np.isnan(MEDIC_t2)] = 0
             TOPUP_t2[np.isnan(TOPUP_t2)] = 0
             breakpoint()

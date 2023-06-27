@@ -190,7 +190,7 @@ def main():
             motion_params = np.loadtxt("mcflirt.par")
             motion_params[:, :3] = np.rad2deg(motion_params[:, :3])
             motion_params[:, :3] = 50 * (np.pi / 180) * motion_params[:, :3]
-            motion_params = motion_params[:args.num_frames]
+            motion_params = motion_params[: args.num_frames]
 
             # run medic
             # fmap_native, dmap, fmap = medic(

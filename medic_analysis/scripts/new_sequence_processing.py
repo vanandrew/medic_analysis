@@ -13,18 +13,10 @@ BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"
 
 def main():
     # Create additional argument for multiprocessing
-    parser.add_argument(
-        "--multiproc",
-        action="store_true",
-        help="Boolean flag to use multiprocessing."
-    )
+    parser.add_argument("--multiproc", action="store_true", help="Boolean flag to use multiprocessing.")
 
     # Create additional argument for debug mode
-    parser.add_argument(
-        "--debug",
-        action="store_true",
-        help="Boolean flag to use debug mode."
-    )
+    parser.add_argument("--debug", action="store_true", help="Boolean flag to use debug mode.")
 
     # call the parser
     args = parser.parse_args()
