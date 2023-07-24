@@ -1,4 +1,5 @@
 from memori.pathman import PathManager as PathMan
+import shutil
 import numpy as np
 import nibabel as nib
 from IPython import embed
@@ -6,8 +7,8 @@ from warpkit.utilities import corr2_coeff
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from medic_analysis.common import FIGURE_OUT, data_plotter
 
-# from hdf5storage import loadmat
 
 DATA_PATH = PathMan("/home/usr/vana/GMT/David/MEDIC")
 
@@ -15,13 +16,13 @@ GROUP_TEMPLATE = PathMan("/home/usr/vana/GMT2/Andrew/120_Network_templates_erode
 
 UPENN_DATA = PathMan("/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline/")
 
-ASD_ADHD_DATA = PathMan("/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline")
+ASD_ADHD_DATA = PathMan("/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2")
 
 RESPDATA = PathMan("/home/usr/vana/GMT2/Andrew/RESPTEST/derivatives/me_pipeline")
 
 ASD_ADHD_STATS = PathMan("/home/usr/vana/GMT/David/MEDIC/MEDIC_TOPUP_FullBrain.dat")
 
-sns.set_theme()
+sns.set_theme(style="white")
 
 
 def main():
@@ -39,19 +40,6 @@ def main():
     # load dataset
     dataset = ASD_ADHD_DATA
     TOPUPNAME = "wTOPUP"
-    # dataset = UPENN_DATA
-    # TOPUPNAME = "wTOPUPSE"
-    # dataset = RESPDATA
-    # TOPUPNAME = "wTOPUP"
-
-    # # loop through subjects
-    # for subject in dataset.glob("sub-*"):
-    #     print(f"Processing {subject.name}")
-    #     for session in subject.glob("ses-*"):
-    #         if TOPUPNAME in session.name:
-    #             continue
-    #         print(f"Processing {session.name}")
-    #         group_corr_analysis(group_template, output_dir, session, subject.name, session.name, TOPUPNAME)
 
     # plot stats
     data = pd.read_csv(ASD_ADHD_STATS)
@@ -119,7 +107,7 @@ def main():
     )
 
     def plot_box_plot(data, variable, ax):
-        sb = sns.boxplot(data=data, x="value", y=variable, ax=ax)
+        sb = sns.boxplot(data=data, x="value", y=variable, order=["TOPUP", "MEDIC"], ax=ax)
         sb.set_xlabel("")
         return sb
 
@@ -128,13 +116,13 @@ def main():
     subfigs = fig.subfigures(1, 2, wspace=0.1)
     subfigs2 = subfigs[0].subfigures(2, 1, hspace=0.1, height_ratios=[3, 1])
     fig_global = subfigs2[0]
-    fig_global.suptitle("Global Metrics")
+    fig_global.suptitle("(A) Global Metrics")
     axes_global = fig_global.subplots(3, 2)
     fig_local = subfigs2[1]
-    fig_local.suptitle("Local Metrics")
+    fig_local.suptitle("(B) Local Metrics")
     axes_local = fig_local.subplots(1, 2)
     fig_roc = subfigs[1]
-    fig_roc.suptitle("Segmentation Metrics")
+    fig_roc.suptitle("(C) Segmentation Metrics")
     axes_roc = fig_roc.subplots(3, 1)
 
     # plot global metrics
@@ -154,10 +142,63 @@ def main():
     plot_box_plot(roc_gw, "Gray/White Matter AUC", axes_roc[1])
     plot_box_plot(roc_vw, "Ventricles/White Matter AUC", axes_roc[2])
 
+    # save figure
+    fig.savefig(FIGURE_OUT / "group_comparison.png", dpi=300, bbox_inches="tight")
+
     # make figure for tSNR
-    fig_tsnr = plt.figure(figsize=(8, 3))
-    ax_tsnr = fig_tsnr.subplots(1, 1)
+    fig_tsnr = plt.figure(figsize=(9, 10), layout="constrained")
+    subfigs_tsnr = fig_tsnr.subfigures(2, 1, height_ratios=[4, 1])
+
+    # load tSNR data for sub-20001
+    # load the run 2 data
+    # copy over data to local
+    tSNR_MEDIC = PathMan(
+        ASD_ADHD_DATA
+        / "sub-20001"
+        / "ses-50654"
+        / "bold2"
+        / "sub-20001_b2_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_SNR.nii.gz",
+    )
+    tSNR_TOPUP = PathMan(
+        ASD_ADHD_DATA
+        / "sub-20001"
+        / "ses-50654wTOPUP"
+        / "bold2"
+        / "sub-20001_b2_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_SNR.nii.gz",
+    )
+    # tSNR_MEDIC = PathMan("sub-20001_b2_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_SNR.nii.gz")
+    tSNR_MEDIC = nib.load(tSNR_MEDIC.path).get_fdata()
+    # tSNR_TOPUP = PathMan("sub-20001_b2_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_SNR.nii.gz")
+    tSNR_TOPUP = nib.load(tSNR_TOPUP.path).get_fdata()
+    fig = data_plotter(
+        [tSNR_TOPUP, tSNR_MEDIC, tSNR_MEDIC - tSNR_TOPUP],
+        colormaps=["rocket", "rocket", "icefire"],
+        vmin=[0, 0, -50],
+        vmax=[150, 150, 50],
+        colorbar=True,
+        colorbar_label="tSNR",
+        colorbar_pad=0.1,
+        colorbar2=True,
+        colorbar2_label="tSNR Difference",
+        colorbar2_source_idx=(2, 0),
+        colorbar2_pad=0.1,
+        slices=(55, 55, 32),
+        figure=subfigs_tsnr[0],
+        text_color="white",
+    )
+    fig.set_facecolor("black")
+    sbs = fig.get_axes()
+    sbs[1].set_title("(A) tSNR (TOPUP)", color="white", loc="center", y=-0.2)
+    sbs[4].set_title("(B) tSNR (MEDIC)", color="white", loc="center", y=-0.2)
+    sbs[7].set_title("(C) tSNR Difference (MEDIC - TOPUP)", color="white", loc="center", y=-0.2)
+
+    # box plot for group tSNR
+    # add subfig
+    subfigs_tsnrbox = subfigs_tsnr[1].subfigures(1, 3, width_ratios=[1, 8, 1])
+    ax_tsnr = subfigs_tsnrbox[1].subplots(1, 1)
+    ax_tsnr.set_title("(D) tSNR Group Comparison", color="black", loc="center", y=-0.5)
     plot_box_plot(tSNR, "tSNR", ax_tsnr)
+    fig_tsnr.savefig(FIGURE_OUT / "group_tsnr.png", dpi=300, bbox_inches="tight")
     plt.show()
 
 

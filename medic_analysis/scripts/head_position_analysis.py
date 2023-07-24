@@ -6,7 +6,7 @@ from warpkit.unwrap import create_brain_mask
 from . import (
     parser,
 )
-from medic_analysis.common import data_plotter, render_dynamic_figure, plt, sns
+from medic_analysis.common import data_plotter, render_dynamic_figure, plt, sns, FIGURE_OUT
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/HEADPOSITIONSUSTEST"
@@ -110,6 +110,7 @@ def main():
             colorbar_alt_range=True,
             vmin=vlims[0],
             vmax=vlims[1],
+            text_color="white",
         )
         sbs = f0_subfigs[0].get_axes()
         sbs[1].set_title(f"(A) {args.labels[1]} (14.957 deg)", loc="center", y=-0.5)
@@ -127,12 +128,14 @@ def main():
             colorbar2_alt_range=True,
             vmin=vlims[0],
             vmax=vlims[1],
+            text_color="white",
         )
         sbs = f0_subfigs[1].get_axes()
         sbs[1].set_title(f"(B) {args.labels[2]} (9.778 deg)", loc="center", y=-0.5)
         sbs[4].set_title(f"(D) {args.labels[4]} (13.726 deg)", loc="center", y=-0.5)
         sbs[7].set_title(f"(F) {args.labels[6]} (8.577 deg)", loc="center", y=-0.5)
         f0.suptitle("Motion-dependent field map differences (Position - Neutral Position)")
+        f0.savefig(FIGURE_OUT / "fieldmap_differences.png", dpi=300, bbox_inches="tight")
 
         # plot static field maps against topup neutral
         f1 = plt.figure(figsize=(16, 8), layout="constrained")
@@ -149,6 +152,7 @@ def main():
             colorbar_alt_range=True,
             vmin=vlims[0],
             vmax=vlims[1],
+            text_color="white",
         )
         sbs = f1_subfigs[0].get_axes()
         sbs[1].set_title(f"(A) {args.labels[0]}", loc="center", y=-0.3)
@@ -164,12 +168,13 @@ def main():
                 (static_fieldmaps[6][..., 0] - topup_fieldmap) * mask,
             ],
             figure=f1_subfigs[1],
-            colormaps=["icefire", "icefire", "icefire", "icefire"],
+            colormaps=["gray", "icefire", "icefire", "icefire"],
             colorbar2=True,
             colorbar2_alt_range=True,
             colorbar2_source_idx=(1, 1),
-            vmin=vlims[0],
-            vmax=vlims[1],
+            vmin=[0, vlims[0], vlims[0], vlims[0]],
+            vmax=[10000, vlims[1], vlims[1], vlims[1]],
+            text_color="white",
         )
         sbs = f1_subfigs[1].get_axes()
         sbs[0].set_visible(False)
@@ -179,6 +184,7 @@ def main():
         sbs[7].set_title(f"(E) {args.labels[4]} (13.726 deg)", loc="center", y=-0.3)
         sbs[10].set_title(f"(G) {args.labels[6]} (8.577 deg)", loc="center", y=-0.3)
         f1.suptitle("Field map difference from neutral position (MEDIC - TOPUP Neutral)")
+        f1.savefig(FIGURE_OUT / "fieldmap_differences_topup.png", dpi=300, bbox_inches="tight")
 
     if args.plot_only is None or 1 in args.plot_only:
         # load up corrected images
@@ -187,14 +193,14 @@ def main():
         for idx in args.static_head_position_run_idx:
             run = idx + 1
             corrected_data_medic.append(
-                nib.load(medic_corrected / f"run{run:02d}" / "medic" / "medic_corrected.nii.gz")
+                nib.load(medic_corrected / f"run{run:02d}" / "medic" / "medic_corrected_aligned.nii.gz")
             )
         topup_corrected = PathMan(args.output_dir) / "corrected_data"
         corrected_data_topup = []
         for idx in args.static_head_position_run_idx:
             run = idx + 1
             corrected_data_topup.append(
-                nib.load(topup_corrected / f"run{run:02d}" / "topup" / "topup_corrected.nii.gz")
+                nib.load(topup_corrected / f"run{run:02d}" / "topup" / "topup_aligned_corrected.nii.gz")
             )
 
         # compute tSNR for first static field map
@@ -212,14 +218,19 @@ def main():
             # plot tSNR
             f1 = plt.figure(figsize=(16, 8), layout="constrained")
             data_plotter(
-                [tSNR_medic[-1], tSNR_topup[-1]], colorbar=True, colorbar_label="tSNR", vmax=50, vmin=0, figure=f1
+                [tSNR_medic[-1], tSNR_topup[-1]],
+                colorbar=True,
+                colorbar_label="tSNR",
+                vmax=50,
+                vmin=0,
+                figure=f1,
+                text_color="white",
             )
             f1.text(0.6, 0.51, f"(A) MEDIC", ha="center")
             f1.text(0.6, 0.01, f"(B) TOPUP", ha="center")
-            plt.show()
-            nib.Nifti1Image(tSNR_medic[-1], medic.affine).to_filename("tSNR_medic.nii.gz")
-            nib.Nifti1Image(tSNR_topup[-1], topup.affine).to_filename("tSNR_topup.nii.gz")
-
+            break
+    plt.show()
+    """
         f1 = plt.figure(figsize=(16, 8), layout="constrained")
         f1_subfigs = f1.subfigures(1, 2)
         data_plotter(
@@ -311,3 +322,4 @@ def main():
 
     # plot static field maps
     plt.show()
+    """

@@ -9,7 +9,6 @@ from matplotlib.figure import Figure, SubFigure
 from matplotlib.image import AxesImage
 import seaborn as sns
 import nibabel as nib
-import numpy as np
 import numpy.typing as npt
 from typing import Callable, cast, List, Tuple, Sequence, Union
 from memori.logging import run_process
@@ -31,6 +30,10 @@ sns.set(
         "ytick.color": "white",
     },
 )
+
+# figure output directory
+FIGURE_OUT = Path("/home/usr/vana/GMT2/Andrew/medic_analysis/figures")
+FIGURE_OUT.mkdir(exist_ok=True, parents=True)
 
 
 def normalize(x: npt.NDArray) -> npt.NDArray:
@@ -163,6 +166,7 @@ def data_plotter(
     colorbar_alt_range_fx: Callable = hz_limits_to_mm,
     colorbar_alt_label: str = "mm",
     colorbar_aspect: int = 60,
+    colorbar_pad: float = 0.35,
     colorbar2: bool = False,
     colorbar2_label: str = "Hz",
     colorbar2_labelpad: int = -5,
@@ -172,9 +176,11 @@ def data_plotter(
     colorbar2_alt_range_fx: Callable = hz_limits_to_mm,
     colorbar2_alt_label: str = "mm",
     colorbar2_aspect: int = 60,
+    colorbar2_pad: float = 0.35,
     figsize: Sequence[float] = (8, 9),
     figure: Union[Figure, SubFigure, None] = None,
     frame_num: int = 0,
+    text_color: str = "black",
 ) -> Union[Figure, SubFigure]:
     # if imgs has nib.Nifti1Image type in list, get numpy array data
     if type(imgs[0]) is nib.Nifti1Image:
@@ -231,18 +237,20 @@ def data_plotter(
             colorbar_source_img,
             ax=[r[0][0] for r in fig_row],
             aspect=colorbar_aspect,
-            pad=0.35,
+            pad=colorbar_pad,
             location="left",
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("left")
-        cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, rotation=90)
+        cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, color=text_color, rotation=90)
+        cbar.ax.tick_params(color=text_color, labelcolor=text_color)
         # for colorbar alt range
         if colorbar_alt_range:
             alt_vmin, alt_vmax = colorbar_alt_range_fx(vmin[colorbar_source_idx[0]], vmax[colorbar_source_idx[0]])
             cax = cbar.ax.twinx()
             cax.set_ylim(alt_vmin, alt_vmax)
-            cax.set_ylabel(colorbar_alt_label, labelpad=colorbar_alt_labelpad, rotation=90)
+            cax.set_ylabel(colorbar_alt_label, labelpad=colorbar_alt_labelpad, color=text_color, rotation=90)
+            cax.tick_params(color=text_color, labelcolor=text_color)
 
     # if colorbar2 is set, draw it
     if colorbar2:
@@ -251,19 +259,21 @@ def data_plotter(
             colorbar2_source_img,
             ax=[r[-1][0] for r in fig_row],
             aspect=colorbar2_aspect,
-            pad=0.35,
+            pad=colorbar2_pad,
             location="right",
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("right")
-        cbar.ax.set_ylabel(colorbar2_label, labelpad=colorbar2_labelpad, rotation=90)
+        cbar.ax.set_ylabel(colorbar2_label, labelpad=colorbar2_labelpad, color=text_color, rotation=90)
+        cbar.ax.tick_params(color=text_color, labelcolor=text_color)
         # for colorbar alt range
         if colorbar2_alt_range:
             alt_vmin, alt_vmax = colorbar2_alt_range_fx(vmin[colorbar2_source_idx[0]], vmax[colorbar2_source_idx[0]])
             cax = cbar.ax.twinx()
             cax.yaxis.set_ticks_position("left")
             cax.set_ylim(alt_vmin, alt_vmax)
-            cax.set_ylabel(colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, rotation=90)
+            cax.set_ylabel(colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, color=text_color, rotation=90)
+            cax.tick_params(color=text_color, labelcolor=text_color)
             cbar.ax.yaxis.set_ticks_position("right")  # reset the ticks position on the non-alt bar
 
     # return figure

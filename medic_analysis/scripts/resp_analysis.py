@@ -148,3 +148,4 @@ def main():
                 ax.legend(["pre-medic", "post-medic"])
 
                 plt.show()
+                breakpoint()

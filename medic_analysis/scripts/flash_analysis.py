@@ -1,11 +1,9 @@
-from bids import BIDSLayout
 import nibabel as nib
-from memori.logging import run_process
 from memori.pathman import PathManager as PathMan
 from . import (
     parser,
 )
-from medic_analysis.common import data_plotter, plt, Figure
+from medic_analysis.common import data_plotter, plt, FIGURE_OUT
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/FLASHSUSTEST"
@@ -18,9 +16,6 @@ def main():
     # if bids dir not specified, use default
     if args.bids_dir is None:
         args.bids_dir = BIDS_DATA_DIR
-
-    # # Load the dataset
-    # layout = BIDSLayout(args.bids_dir, database_path=args.bids_dir)
 
     # set output dir
     if args.output_dir is None:
@@ -60,6 +55,7 @@ def main():
         colorbar=True,
         colorbar_alt_range=True,
         figure=sf[0],
+        text_color="white",
     )
     sbs = sf[0].get_axes()
     sbs[1].set_title(f"(A) PE-Polar (topup)", loc="center", y=-0.25)
@@ -78,6 +74,7 @@ def main():
         colorbar2=True,
         colorbar2_alt_range=True,
         figure=sf[1],
+        text_color="white",
     )
     sbs = sf[1].get_axes()
     sbs[1].set_title(f"(D) ME-EPI (MEDIC) - PE-Polar (topup)", loc="center", y=-0.25)
@@ -85,4 +82,5 @@ def main():
     sbs[7].set_title(f"(F) ME-EPI (MEDIC) - FLASH (ROMEO)", loc="center", y=-0.25)
 
     # plot figures
+    f.savefig(FIGURE_OUT / "fieldmap_comparison.png", dpi=300, bbox_inches="tight")
     plt.show()
