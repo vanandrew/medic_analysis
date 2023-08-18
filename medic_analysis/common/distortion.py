@@ -32,7 +32,6 @@ def run_medic(
         total_readout_time,
         phase_encoding_direction,
         frames=[i for i in range(num_frames)],
-        n_cpus=8,
         **kwargs,
     )
     # save the data

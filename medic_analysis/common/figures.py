@@ -10,25 +10,26 @@ from matplotlib.image import AxesImage
 import seaborn as sns
 import nibabel as nib
 import numpy.typing as npt
-from typing import Callable, cast, List, Tuple, Sequence, Union
+from typing import Callable, cast, List, Tuple, Optional, Sequence, Union
 from memori.logging import run_process
 
 # plot settings
 warnings.filterwarnings("ignore")
-# sns.set(font="Lato", font_scale=1.5, style="seaborn-white")
 sns.set(
     font="Lato",
-    font_scale=1.5,
-    style="dark",
-    rc={
-        "axes.facecolor": "black",
-        "figure.facecolor": "black",
-        "axes.labelcolor": "white",
-        "axes.titlecolor": "white",
-        "text.color": "white",
-        "xtick.color": "white",
-        "ytick.color": "white",
-    },
+    font_scale=1,
+    palette="pastel",
+    style="white",
+    # style="dark",
+    # rc={
+    #     "axes.facecolor": "black",
+    #     "figure.facecolor": "black",
+    #     "axes.labelcolor": "white",
+    #     "axes.titlecolor": "white",
+    #     "text.color": "white",
+    #     "xtick.color": "white",
+    #     "ytick.color": "white",
+    # },
 )
 
 # figure output directory
@@ -120,7 +121,13 @@ def hz_limits_to_mm(
 
 
 def subplot_imshow(
-    f: Union[Figure, SubFigure], data: npt.NDArray, entry: Tuple[int, int, int], vmin: float, vmax: float, cmap: str
+    f: Union[Figure, SubFigure],
+    data: npt.NDArray,
+    entry: Tuple[int, int, int],
+    vmin: float,
+    vmax: float,
+    cmap: str,
+    axes_list: Optional[List[Axes]] = None,
 ) -> Tuple[Axes, AxesImage]:
     """Create a subplot with an image.
 
@@ -138,13 +145,19 @@ def subplot_imshow(
         Maximum value for colorbar.
     cmap : str
         Colormap to use.
+    axes_list : Optional[List[Axes]], optional
+        List of axes to add to instead of creating a new axes, by default None
 
     Returns
     -------
     Tuple[Axes, AxesImage]
         Axes and image.
     """
-    ax = f.add_subplot(*entry, frame_on=False, anchor="C")  # type: ignore
+    if axes_list is not None:
+        plot_idx = entry[-1] - 1
+        ax = axes_list[plot_idx]
+    else:
+        ax = f.add_subplot(*entry, frame_on=False, anchor="C")  # type: ignore
     im = ax.imshow(data, origin="lower", cmap=cmap, vmin=vmin, vmax=vmax)
     ax.set_xticklabels([])
     ax.set_yticklabels([])
@@ -166,7 +179,7 @@ def data_plotter(
     colorbar_alt_range_fx: Callable = hz_limits_to_mm,
     colorbar_alt_label: str = "mm",
     colorbar_aspect: int = 60,
-    colorbar_pad: float = 0.35,
+    colorbar_pad: float = 0.1,
     colorbar2: bool = False,
     colorbar2_label: str = "Hz",
     colorbar2_labelpad: int = -5,
@@ -176,11 +189,17 @@ def data_plotter(
     colorbar2_alt_range_fx: Callable = hz_limits_to_mm,
     colorbar2_alt_label: str = "mm",
     colorbar2_aspect: int = 60,
-    colorbar2_pad: float = 0.35,
-    figsize: Sequence[float] = (8, 9),
+    colorbar2_pad: float = 0.1,
+    figsize: Sequence[float] = (5, 6),
     figure: Union[Figure, SubFigure, None] = None,
     frame_num: int = 0,
     text_color: str = "black",
+    fontsize: int = 12,
+    grid_size: Optional[Tuple[int, int]] = None,
+    cbar_ax: Optional[Axes] = None,
+    cbar2_ax: Optional[Axes] = None,
+    axes_list: Optional[List[Axes]] = None,
+    fraction: float = 0.15,
 ) -> Union[Figure, SubFigure]:
     # if imgs has nib.Nifti1Image type in list, get numpy array data
     if type(imgs[0]) is nib.Nifti1Image:
@@ -214,7 +233,8 @@ def data_plotter(
         f = plt.figure(figsize=figsize, layout="constrained")
 
     # get grid size based on input
-    grid_size = (len(imgs), 3)
+    if grid_size is None:
+        grid_size = (len(imgs), 3)
 
     # plot each img on a row
     plot_idx = 1
@@ -222,11 +242,11 @@ def data_plotter(
     for cmap, vmin_i, vmax_i, img in zip(colormaps, vmin, vmax, imgs):
         if len(img.shape) == 4:
             img = img[:, :, :, frame_num]
-        ax1, axi1 = subplot_imshow(f, img[:, :, slices[2]].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap)
+        ax1, axi1 = subplot_imshow(f, img[:, :, slices[2]].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap, axes_list)
         plot_idx += 1
-        ax2, axi2 = subplot_imshow(f, img[slices[0], :, :].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap)
+        ax2, axi2 = subplot_imshow(f, img[slices[0], :, :].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap, axes_list)
         plot_idx += 1
-        ax3, axi3 = subplot_imshow(f, img[:, slices[1], :].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap)
+        ax3, axi3 = subplot_imshow(f, img[:, slices[1], :].T, (*grid_size, plot_idx), vmin_i, vmax_i, cmap, axes_list)
         plot_idx += 1
         fig_row.append(((ax1, axi1), (ax2, axi2), (ax3, axi3)))
 
@@ -235,45 +255,53 @@ def data_plotter(
         colorbar_source_img = fig_row[colorbar_source_idx[0]][colorbar_source_idx[1]][1]
         cbar = f.colorbar(
             colorbar_source_img,
-            ax=[r[0][0] for r in fig_row],
+            ax=cbar_ax if cbar_ax is not None else [r[0][0] for r in fig_row],
             aspect=colorbar_aspect,
+            fraction=fraction,
             pad=colorbar_pad,
             location="left",
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("left")
-        cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, color=text_color, rotation=90)
-        cbar.ax.tick_params(color=text_color, labelcolor=text_color)
+        cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, color=text_color, fontsize=fontsize, rotation=90)
+        cbar.ax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
         # for colorbar alt range
         if colorbar_alt_range:
             alt_vmin, alt_vmax = colorbar_alt_range_fx(vmin[colorbar_source_idx[0]], vmax[colorbar_source_idx[0]])
             cax = cbar.ax.twinx()
             cax.set_ylim(alt_vmin, alt_vmax)
-            cax.set_ylabel(colorbar_alt_label, labelpad=colorbar_alt_labelpad, color=text_color, rotation=90)
-            cax.tick_params(color=text_color, labelcolor=text_color)
+            cax.set_ylabel(
+                colorbar_alt_label, labelpad=colorbar_alt_labelpad, color=text_color, fontsize=fontsize, rotation=90
+            )
+            cax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
 
     # if colorbar2 is set, draw it
     if colorbar2:
         colorbar2_source_img = fig_row[colorbar2_source_idx[0]][colorbar2_source_idx[1]][1]
         cbar = f.colorbar(
             colorbar2_source_img,
-            ax=[r[-1][0] for r in fig_row],
+            ax=cbar2_ax if cbar2_ax is not None else [r[-1][0] for r in fig_row],
             aspect=colorbar2_aspect,
+            fraction=fraction,
             pad=colorbar2_pad,
             location="right",
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("right")
-        cbar.ax.set_ylabel(colorbar2_label, labelpad=colorbar2_labelpad, color=text_color, rotation=90)
-        cbar.ax.tick_params(color=text_color, labelcolor=text_color)
+        cbar.ax.set_ylabel(
+            colorbar2_label, labelpad=colorbar2_labelpad, color=text_color, fontsize=fontsize, rotation=90
+        )
+        cbar.ax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
         # for colorbar alt range
         if colorbar2_alt_range:
             alt_vmin, alt_vmax = colorbar2_alt_range_fx(vmin[colorbar2_source_idx[0]], vmax[colorbar2_source_idx[0]])
             cax = cbar.ax.twinx()
             cax.yaxis.set_ticks_position("left")
             cax.set_ylim(alt_vmin, alt_vmax)
-            cax.set_ylabel(colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, color=text_color, rotation=90)
-            cax.tick_params(color=text_color, labelcolor=text_color)
+            cax.set_ylabel(
+                colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, color=text_color, fontsize=fontsize, rotation=90
+            )
+            cax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
             cbar.ax.yaxis.set_ticks_position("right")  # reset the ticks position on the non-alt bar
 
     # return figure

@@ -8,6 +8,22 @@ from . import (
 )
 from medic_analysis.common import data_plotter, render_dynamic_figure, plt, sns, FIGURE_OUT
 
+sns.set(
+    font="Lato",
+    font_scale=1.25,
+    palette="pastel",
+    style="dark",
+    rc={
+        "axes.facecolor": "black",
+        "figure.facecolor": "black",
+        "axes.labelcolor": "white",
+        "axes.titlecolor": "white",
+        "text.color": "white",
+        "xtick.color": "white",
+        "ytick.color": "white",
+    },
+)
+
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/HEADPOSITIONSUSTEST"
 

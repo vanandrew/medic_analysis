@@ -186,8 +186,12 @@ def main():
     medic_output.mkdir(exist_ok=True, parents=True)
     with working_directory(medic_output.path):
         for idx, run in zip(range(n_runs), layout.get_runs(datatype="func")):
+            # if idx != 13:
+            #     continue
+            # if idx != 4:
+            #     continue
             PathMan(f"run{run:02d}").mkdir(exist_ok=True)
-            (hash_outputs / f"run{run:02d}" / "medic.stage").unlink(missing_ok=True)
+            # (hash_outputs / f"run{run:02d}" / "medic.stage").unlink(missing_ok=True)
 
             # get metadata
             echo_times = [me_epi_phase_data[idx][n].get_metadata()["EchoTime"] * 1000 for n in range(n_echos)]
@@ -206,6 +210,8 @@ def main():
                 int(run),
                 border_size=5,
                 svd_filt=10,
+                n_cpus=16,
+                debug=False,
             )
 
     # do the same for fmaps

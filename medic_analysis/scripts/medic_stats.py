@@ -22,13 +22,8 @@ RESPDATA = PathMan("/home/usr/vana/GMT2/Andrew/RESPTEST/derivatives/me_pipeline"
 
 ASD_ADHD_STATS = PathMan("/home/usr/vana/GMT/David/MEDIC/MEDIC_TOPUP_FullBrain.dat")
 
-sns.set_theme(style="white")
-
 
 def main():
-    # import group template
-    group_template = nib.load(GROUP_TEMPLATE)
-
     # output directory
     output_dir = PathMan("/home/usr/vana/GMT2/Andrew/MSCHD02_GROUP_CORR_ANALYSIS")
     output_dir.mkdir(exist_ok=True)
@@ -146,8 +141,9 @@ def main():
     fig.savefig(FIGURE_OUT / "group_comparison.png", dpi=300, bbox_inches="tight")
 
     # make figure for tSNR
-    fig_tsnr = plt.figure(figsize=(9, 10), layout="constrained")
-    subfigs_tsnr = fig_tsnr.subfigures(2, 1, height_ratios=[4, 1])
+    fig_tsnr = plt.figure(figsize=(16, 8), layout="constrained")
+    fig_tsnr.set_facecolor("black")
+    subfigs_tsnr = fig_tsnr.subfigures(1, 2)
 
     # load tSNR data for sub-20001
     # load the run 2 data
@@ -171,140 +167,45 @@ def main():
     # tSNR_TOPUP = PathMan("sub-20001_b2_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_SNR.nii.gz")
     tSNR_TOPUP = nib.load(tSNR_TOPUP.path).get_fdata()
     fig = data_plotter(
-        [tSNR_TOPUP, tSNR_MEDIC, tSNR_MEDIC - tSNR_TOPUP],
-        colormaps=["rocket", "rocket", "icefire"],
-        vmin=[0, 0, -50],
-        vmax=[150, 150, 50],
+        [tSNR_TOPUP, tSNR_MEDIC],
+        colormaps=["rocket", "rocket"],
+        vmin=[0, 0],
+        vmax=[150, 150],
         colorbar=True,
         colorbar_label="tSNR",
         colorbar_pad=0.1,
-        colorbar2=True,
-        colorbar2_label="tSNR Difference",
-        colorbar2_source_idx=(2, 0),
-        colorbar2_pad=0.1,
         slices=(55, 55, 32),
         figure=subfigs_tsnr[0],
         text_color="white",
     )
     fig.set_facecolor("black")
     sbs = fig.get_axes()
-    sbs[1].set_title("(A) tSNR (TOPUP)", color="white", loc="center", y=-0.2)
-    sbs[4].set_title("(B) tSNR (MEDIC)", color="white", loc="center", y=-0.2)
-    sbs[7].set_title("(C) tSNR Difference (MEDIC - TOPUP)", color="white", loc="center", y=-0.2)
+    sbs[1].set_title("(A) tSNR (TOPUP)", color="white", loc="center", y=-0.5)
+    sbs[4].set_title("(B) tSNR (MEDIC)", color="white", loc="center", y=-0.5)
 
     # box plot for group tSNR
     # add subfig
-    subfigs_tsnrbox = subfigs_tsnr[1].subfigures(1, 3, width_ratios=[1, 8, 1])
-    ax_tsnr = subfigs_tsnrbox[1].subplots(1, 1)
-    ax_tsnr.set_title("(D) tSNR Group Comparison", color="black", loc="center", y=-0.5)
+    subfigs_tsnr[1].set_facecolor("black")
+    subfigs_tsnrbox = subfigs_tsnr[1].subfigures(2, 1)
+    fig = data_plotter(
+        [tSNR_MEDIC - tSNR_TOPUP],
+        colormaps=["icefire"],
+        vmin=[-50],
+        vmax=[50],
+        colorbar2=True,
+        colorbar2_label="tSNR Difference",
+        colorbar2_source_idx=(0, 1),
+        colorbar2_pad=0.1,
+        slices=(55, 55, 32),
+        figure=subfigs_tsnrbox[0],
+        text_color="white",
+    )
+    fig.set_facecolor("black")
+    sbs = fig.get_axes()
+    sbs[1].set_title("(C) tSNR Difference (MEDIC - TOPUP)", color="white", loc="center", y=-0.5)
+    subfigs_tsnrbox2 = subfigs_tsnrbox[1].subfigures(3, 2, height_ratios=[3, 18, 1], width_ratios=[19, 1])
+    ax_tsnr = subfigs_tsnrbox2[1, 0].subplots(1, 1)
     plot_box_plot(tSNR, "tSNR", ax_tsnr)
+    ax_tsnr.set_title("(D) tSNR Group Comparison", color="black", loc="center", y=-0.4)
     fig_tsnr.savefig(FIGURE_OUT / "group_tsnr.png", dpi=300, bbox_inches="tight")
     plt.show()
-
-
-def group_corr_analysis(group_template, output_dir, session_path, subject, session, TOPUPNAME):
-    # loop through cifti files in session
-    for medic_cifti_file in session_path.glob("cifti_correlation/*.dconn.nii"):
-        # get run number
-        run_num = medic_cifti_file.name.split("_b")[1].split("_")[0]
-        # form pepolar name
-        pepolar_cifti_file = PathMan(session_path.path + TOPUPNAME) / "cifti_correlation" / medic_cifti_file.name
-        medic_cifti = nib.load(medic_cifti_file)
-        pepolar_cifti = nib.load(pepolar_cifti_file)
-
-        # reindex data so it fits 32k template
-        num_vertices = 32492
-        group_template_structures = group_template.header.get_axis(1).iter_structures()
-        group_template_left_cortex = next(group_template_structures)
-        group_template_right_cortex = next(group_template_structures)
-        group_template_left_cortex_slice = group_template_left_cortex[1]
-        group_template_right_cortex_slice = group_template_right_cortex[1]
-        group_template_left_cortex_vertices = group_template_left_cortex[2].vertex
-        group_template_right_cortex_vertices = group_template_right_cortex[2].vertex
-        medic_structures = medic_cifti.header.get_axis(1).iter_structures()
-        medic_left_cortex = next(medic_structures)
-        medic_right_cortex = next(medic_structures)
-        medic_left_cortex_slice = medic_left_cortex[1]
-        medic_right_cortex_slice = medic_right_cortex[1]
-        medic_left_cortex_vertices = medic_left_cortex[2].vertex
-        medic_right_cortex_vertices = medic_right_cortex[2].vertex
-        pepolar_structures = pepolar_cifti.header.get_axis(1).iter_structures()
-        pepolar_left_cortex = next(pepolar_structures)
-        pepolar_right_cortex = next(pepolar_structures)
-        pepolar_left_cortex_slice = pepolar_left_cortex[1]
-        pepolar_right_cortex_slice = pepolar_right_cortex[1]
-        pepolar_left_cortex_vertices = pepolar_left_cortex[2].vertex
-        pepolar_right_cortex_vertices = pepolar_right_cortex[2].vertex
-
-        # allocate memory for group data
-        group_data = np.zeros(num_vertices)
-
-        # fill in the data
-        corr_medic = np.zeros((17, medic_right_cortex_slice.stop - medic_left_cortex_slice.start))
-        corr_pepolar = np.zeros((17, pepolar_right_cortex_slice.stop - pepolar_left_cortex_slice.start))
-        for i in range(17):
-            # do left cortex
-            group_data[group_template_left_cortex_vertices] = group_template.dataobj[
-                i, group_template_left_cortex_slice
-            ]
-
-            # compute correlation between group network and network vertex
-            for vertex in range(medic_left_cortex_slice.start, medic_left_cortex_slice.stop):
-                group_data_subset = group_data[medic_left_cortex_vertices]
-                medic_data = medic_cifti.dataobj[medic_left_cortex_slice, vertex]
-                mask = ~np.isnan(medic_data)
-                if np.all(mask) is False:
-                    continue
-                corr_medic[i, vertex] = np.corrcoef(group_data_subset[mask], medic_data[mask])[0, 1]
-                print(f"MEDIC Network {i}, Vertex {vertex}")
-
-            for vertex in range(pepolar_left_cortex_slice.start, pepolar_left_cortex_slice.stop):
-                group_data_subset = group_data[pepolar_left_cortex_vertices]
-                pepolar_data = pepolar_cifti.dataobj[pepolar_left_cortex_slice, vertex]
-                mask = ~np.isnan(pepolar_data)
-                if np.all(mask) is False:
-                    continue
-                corr_pepolar[i, vertex] = np.corrcoef(group_data_subset[mask], pepolar_data[mask])[0, 1]
-                print(f"PEpolar Network {i}, Vertex {vertex}")
-
-            # do right cortex
-            group_data[group_template_right_cortex_vertices] = group_template.dataobj[
-                i, group_template_right_cortex_slice
-            ]
-
-            for vertex in range(medic_right_cortex_slice.start, medic_right_cortex_slice.stop):
-                group_data_subset = group_data[medic_right_cortex_vertices]
-                medic_data = medic_cifti.dataobj[medic_right_cortex_slice, vertex]
-                mask = ~np.isnan(medic_data)
-                if np.all(mask) is False:
-                    continue
-                corr_medic[i, vertex] = np.corrcoef(group_data_subset[mask], medic_data[mask])[0, 1]
-                print(f"MEDIC Network {i}, Vertex {vertex}")
-
-            for vertex in range(pepolar_right_cortex_slice.start, pepolar_right_cortex_slice.stop):
-                group_data_subset = group_data[pepolar_right_cortex_vertices]
-                pepolar_data = pepolar_cifti.dataobj[pepolar_right_cortex_slice, vertex]
-                mask = ~np.isnan(pepolar_data)
-                if np.all(mask) is False:
-                    continue
-                corr_pepolar[i, vertex] = np.corrcoef(group_data_subset[mask], pepolar_data[mask])[0, 1]
-                print(f"PEpolar Network {i}, Vertex {vertex}")
-
-        # get wta corr maps
-        wta_corr_medic = np.amax(corr_medic, axis=0)
-        wta_corr_pepolar = np.amax(corr_pepolar, axis=0)
-
-        # save wta corr maps
-        series = nib.cifti2.SeriesAxis(start=0, step=1, size=1)
-        medic_cortex = medic_left_cortex[2] + medic_right_cortex[2]
-        medic_cifti_header = nib.cifti2.Cifti2Header.from_axes((series, medic_cortex))
-        medic_wta_corr_cifti = nib.cifti2.Cifti2Image(wta_corr_medic[np.newaxis, :], header=medic_cifti_header)
-        medic_wta_corr_cifti.to_filename(
-            output_dir / f"{subject}_{session}_b{run_num}_medic_wta_corr_cifti.dtseries.nii"
-        )
-        pepolar_cortex = pepolar_left_cortex[2] + pepolar_right_cortex[2]
-        pepolar_cifti_header = nib.cifti2.Cifti2Header.from_axes((series, pepolar_cortex))
-        pepolar_wta_corr_cifti = nib.cifti2.Cifti2Image(wta_corr_pepolar[np.newaxis, :], header=pepolar_cifti_header)
-        pepolar_wta_corr_cifti.to_filename(
-            output_dir / f"{subject}_{session}_b{run_num}_pepolar_wta_corr_cifti.dtseries.nii"
-        )

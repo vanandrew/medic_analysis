@@ -2,10 +2,27 @@ from pathlib import Path
 from PIL import Image
 import nibabel as nib
 import numpy as np
-from medic_analysis.common import data_plotter, plt
+import seaborn as sns
+from medic_analysis.common import data_plotter, plt, FIGURE_OUT
 
 
 DATASET = Path("/home/usr/vana/GMT2/Andrew/HEADPOSITIONCAT")
+
+sns.set(
+    font="Lato",
+    font_scale=1.5,
+    palette="pastel",
+    style="dark",
+    rc={
+        "axes.facecolor": "black",
+        "figure.facecolor": "black",
+        "axes.labelcolor": "white",
+        "axes.titlecolor": "white",
+        "text.color": "white",
+        "xtick.color": "white",
+        "ytick.color": "white",
+    },
+)
 
 
 def main():
@@ -20,6 +37,7 @@ def main():
     topup_func_path = output / "ses-01wTOPUP" / "bold1" / "sub-MSCHD02_b1_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm.nii"
     medic_fmaps_path = output / "ses-01wNEWPROC" / "bold1" / "MEDIC" / "sub-MSCHD02_b1_fieldmaps.nii"
     topup_mag_path = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_2.nii"
+    topup_mag_path_2 = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_1.nii" 
     topup_fmaps_path = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_FMAP.nii"
 
     # load medic and topup workbench screenshots
@@ -31,6 +49,7 @@ def main():
     topup_screenshot = Image.open(topup_screenshot_path)
     raw_func = nib.load(raw_func_path)
     topup_mag = nib.load(topup_mag_path)
+    topup_mag_2 = nib.load(topup_mag_path_2)
     medic_func = nib.load(medic_func_path)
     topup_func = nib.load(topup_func_path)
     medic_fmaps = nib.load(medic_fmaps_path)
@@ -58,13 +77,18 @@ def main():
     subsubfigs = subfigs[1].subfigures(1, 2, width_ratios=[1, 4])
 
     # plot topup field map
-    data_plotter(
-        [topup_mag.get_fdata(), topup_fmaps.get_fdata() / (2 * np.pi)],
-        vmin=[topup_mag.get_fdata().min(), -100],
-        vmax=[topup_mag.get_fdata().max(), 100],
-        colormaps=["gray", "icefire"],
+    topup_fig = data_plotter(
+        [topup_mag.get_fdata(), topup_mag_2.get_fdata(), topup_fmaps.get_fdata() / (2 * np.pi)],
+        vmin=[topup_mag.get_fdata().min(), topup_mag_2.get_fdata().min(), -100],
+        vmax=[topup_mag.get_fdata().max(), topup_mag_2.get_fdata().max(), 100],
+        colormaps=["gray", "gray", "icefire"],
         figure=subsubfigs[0]
-    ).suptitle("(C) TOPUP Field Map", y=0.97, fontsize=fontsize_1)
+    )
+    topup_fig.suptitle("(C) TOPUP Field Map", y=0.97, fontsize=fontsize_1)
+    topup_axes = topup_fig.get_axes()
+    topup_axes[1].set_title("PA encode", loc="center", y=-0.5, fontsize=fontsize_2)
+    topup_axes[4].set_title("AP encode", loc="center", y=-0.5, fontsize=fontsize_2)
+    topup_axes[7].set_title("Field map", loc="center", y=-0.5, fontsize=fontsize_2)
 
     # get min max
     func_min = raw_func.dataobj[..., 0].min()
@@ -167,6 +191,8 @@ def main():
         colormaps="gray",
         figure=sub4xfigs_2[1, 2],
     ).get_axes()[1].set_title("Frame 650", loc="center", y=-0.5, fontsize=fontsize_2)
+
+    f.savefig(FIGURE_OUT / "head_position_cat.png", dpi=300, bbox_inches="tight")
 
     # show plot
     plt.show()

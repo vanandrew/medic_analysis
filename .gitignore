@@ -130,3 +130,9 @@ dmypy.json
 
 # outputs
 figures/
+data/
+
+# ignore cifti files
+*.dscalar.nii
+*.dtseries.nii
+*.dconn.nii

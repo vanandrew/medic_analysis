@@ -11,9 +11,10 @@ import simplebrainviewer as sbv
 import pandas as pd
 from omni.interfaces.ants import N4BiasFieldCorrection
 from tempfile import TemporaryDirectory
+from . import DATA_DIR
 
-# DATA_OUTPUT_DIR = "/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline"
-DATA_OUTPUT_DIR = "/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline"
+DATA_OUTPUT_DIR = "/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2"
+# DATA_OUTPUT_DIR = "/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline"
 
 
 def normalize(data):
@@ -27,7 +28,7 @@ def main():
 
     # loop over subjects
     for subject_dir in Path(DATA_OUTPUT_DIR).glob("sub-*"):
-        # if subject_dir.name not in "sub-20044":
+        # if "sub-20037" not in subject_dir.name:
         #     continue
         # load the subject's wmparc file
         wmparc_path = next((subject_dir / "T1" / "atlas").glob("*_wmparc_on_MNI152_T1_2mm.nii.gz"))
@@ -47,6 +48,8 @@ def main():
 
         # loop over the sessions for the subject
         for session_dir in subject_dir.glob("ses-*"):
+            # if "ses-52534" not in session_dir.name:
+            #     continue
             # is topup
             isTOPUP = False
             session_name = session_dir.name
@@ -60,14 +63,18 @@ def main():
                 label = "TOPUP" if isTOPUP else "MEDIC"
                 print(f"Processing {subject_dir.name} {session_name} {bold_dir.name} {label}")
                 # load the average bold
+                # if not isTOPUP:
+                #     bold_path = bold_dir / "test.nii.gz"
+                # else:
                 bold_path = next(bold_dir.glob("*_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_avg.nii.gz"))
                 tmp_dir = TemporaryDirectory()
-                N4BiasFieldCorrection(
-                    out_file=str(Path(tmp_dir.name) / "tmp.nii.gz"),
-                    in_file=bold_path,
-                )
-                bold_img = nib.load(str(Path(tmp_dir.name) / "tmp.nii.gz"))
-                bold_data = bold_img.get_fdata()
+                # N4BiasFieldCorrection(
+                #     out_file=str(Path(tmp_dir.name) / "tmp.nii.gz"),
+                #     in_file=bold_path,
+                # )
+                # bold_img = nib.load(str(Path(tmp_dir.name) / "tmp.nii.gz"))
+                bold_img = nib.load(bold_path)
+                bold_data = np.squeeze(bold_img.get_fdata())
 
                 # grab the voxels for this image
                 func_voxels = bold_data[gray_mask | white_mask]
@@ -81,12 +88,16 @@ def main():
                 def threshold_and_compute_hausdorff_distance(anat_labels, func, threshold):
                     # threshold the voxels
                     func_labels_data = func > threshold
+
                     # only grab contiguous voxels
                     # func_labels_data = get_largest_connected_component(func_labels_data)
                     func_labels = nib.Nifti1Image(func_labels_data.astype("f8"), anat_labels.affine)
 
                     # compute the hausdorff distance
-                    return compute_hausdorff_distance(anat_labels, func_labels)
+                    try:
+                        return compute_hausdorff_distance(anat_labels, func_labels)
+                    except RuntimeError:
+                        return 999999
 
                 # optimize the threshold to compute the minimum hausdorff distance
                 def gray_threshold_func(gray_threshold):
@@ -107,18 +118,10 @@ def main():
                         gray_threshold,
                     )
 
-                # best_threshold = minimize_scalar(
-                #     accuracy_func,
-                #     method="Bounded",
-                #     bounds=(0.51, 1.0),
-                # )
-                # obj_value = best_threshold.fun
-                # print(obj_value)
-                # threshold_value = best_threshold.x
                 best_threshold, obj_value, _, _ = brute(
-                    accuracy_func,
+                    gray_threshold_func,
                     ranges=[(0.4, 1.0)],
-                    Ns=100,
+                    Ns=200,
                     workers=1,
                     full_output=True,
                 )
@@ -150,17 +153,9 @@ def main():
                             "gray_threshold_medic": threshold_value,
                         }
                     )
-                # results_df = pd.DataFrame(
-                #     [
-                #         results[-1],
-                #     ]
+                # nib.Nifti1Image((func_graywhite > threshold_value).astype("f8"), bold_img.affine).to_filename(
+                #     f"{subject_dir.name}_{session_name}_{bold_dir.name}_{label}_gray.nii.gz"
                 # )
-                # print(results_df)
-                # sbv.plot_brain(func_graywhite > threshold_value, False)
-                # sbv.plot_brain(gray_mask_img)
-                nib.Nifti1Image((func_graywhite > threshold_value).astype("f8"), bold_img.affine).to_filename(
-                    f"{subject_dir.name}_{session_name}_{bold_dir.name}_{label}_gray.nii.gz"
-                )
                 tmp_dir.cleanup()
 
     # turn results into a dataframe
@@ -179,4 +174,4 @@ def main():
 
     print(results_df)
     # save the results
-    results_df.to_csv("hausdorff_distance_results.csv", index=False)
+    results_df.to_csv(str(DATA_DIR / "hausdorff_distance_results.csv"), index=False)
