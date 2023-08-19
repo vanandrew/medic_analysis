@@ -15,7 +15,12 @@ ASD_ADHD_DATA = Path("/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pip
 
 
 def correlation(data1, data2):
-    return np.corrcoef(data1, data2)[0, 1]
+    corr = np.corrcoef(data1, data2)[0, 1]
+    return corr if not np.isnan(corr) else 0
+
+
+def correlation2(data1, data2):
+    return correlation(data1, data2) ** 2
 
 
 def rolling_window(data1, data2, window, mask, func):
@@ -104,12 +109,17 @@ def nmi(x, y):
 
 
 def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, session, run):
+    # load the wmparc file
+    wmparc_img = nib.load(wmparc_path)
+    wmparc_data = wmparc_img.get_fdata().squeeze()
+
     # get the average image
     avg_path = [f for f in bold_dir.glob("*_Swgt_norm.nii")][0]
     avg_img = nib.load(avg_path)
     avg_data = avg_img.dataobj[..., 0]
     # get the brain mask
-    brain_mask = create_brain_mask(avg_data)
+    # brain_mask = create_brain_mask(avg_data)
+    brain_mask = wmparc_data != 0
 
     # get the t1 and t2 images
     t1_img = nib.load(t1_path)
@@ -118,7 +128,7 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
     t2_data = t2_img.get_fdata().squeeze()
 
     # take correlation between t1/t2 and bold
-    corr_t1 = correlation(t1_data[brain_mask], avg_data[brain_mask])
+    corr_t1 = correlation2(t1_data[brain_mask], avg_data[brain_mask])
     corr_t2 = correlation(t2_data[brain_mask], avg_data[brain_mask])
 
     # compute gradients of data
@@ -141,12 +151,8 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
 
     # create spotlight element
     spotlight = ball(3)
-    local_corr_t1 = rolling_window(t1_data, avg_data, spotlight, brain_mask, correlation).mean()
-    local_corr_t2 = rolling_window(t2_data, avg_data, spotlight, brain_mask, correlation).mean()
-
-    # load the wmparc file
-    wmparc_img = nib.load(wmparc_path)
-    wmparc_data = wmparc_img.get_fdata().squeeze()
+    local_corr_t1 = rolling_window(t1_data, avg_data, spotlight, brain_mask, correlation2).mean()
+    local_corr_t2 = rolling_window(t2_data, avg_data, spotlight, brain_mask, correlation2).mean()
 
     # compute ROC metrics
     roc_gw, roc_ie, roc_vw = roc_metrics(avg_data, wmparc_data)
@@ -254,7 +260,7 @@ def main():
             print(results["subject"])
             print(results["session"])
             print(results["run"])
-            print()
+            print(results)
 
             datalist["pipeline"].append(results["pipeline"])
             datalist["subject"].append(results["subject"])
