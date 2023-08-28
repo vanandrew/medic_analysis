@@ -28,9 +28,9 @@ PED_TABLE = {
 POLARITY_IDX = {"PA": 0, "AP": 1}
 
 # output directories
-DATA_DIR = (Path(__file__).resolve().parent.parent.parent / "data")
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 DATA_DIR.mkdir(exist_ok=True)
-FIGURES_DIR = (Path(__file__).resolve().parent.parent.parent / "figures")
+FIGURES_DIR = Path(__file__).resolve().parent.parent.parent / "figures"
 FIGURES_DIR.mkdir(exist_ok=True)
 
 # Inch to mm conversion

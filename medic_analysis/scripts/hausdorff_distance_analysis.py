@@ -1,7 +1,7 @@
 import nibabel as nib
 import numpy as np
 from scipy.optimize import minimize_scalar, brute
-from scipy.stats import zscore
+from scipy.stats import ttest_rel
 from warpkit.utilities import compute_hausdorff_distance
 from warpkit.unwrap import get_largest_connected_component
 from skimage.morphology import dilation, ball
@@ -27,7 +27,7 @@ def main():
     results = []
 
     # loop over subjects
-    for subject_dir in Path(DATA_OUTPUT_DIR).glob("sub-*"):
+    for subject_dir in sorted(Path(DATA_OUTPUT_DIR).glob("sub-*")):
         # if "sub-20037" not in subject_dir.name:
         #     continue
         # load the subject's wmparc file
@@ -47,7 +47,7 @@ def main():
         zeros_data = np.zeros(gray_mask.shape)
 
         # loop over the sessions for the subject
-        for session_dir in subject_dir.glob("ses-*"):
+        for session_dir in sorted(subject_dir.glob("ses-*")):
             # if "ses-52534" not in session_dir.name:
             #     continue
             # is topup
@@ -59,22 +59,20 @@ def main():
             if "GRE" in session_dir.name:
                 continue
             # loop over each bold run
-            for bold_dir in session_dir.glob("bold?"):
+            for bold_dir in sorted(session_dir.glob("bold?")):
                 label = "TOPUP" if isTOPUP else "MEDIC"
                 print(f"Processing {subject_dir.name} {session_name} {bold_dir.name} {label}")
-                # load the average bold
-                # if not isTOPUP:
-                #     bold_path = bold_dir / "test.nii.gz"
-                # else:
-                bold_path = next(bold_dir.glob("*_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm_avg.nii.gz"))
+                bold_path = next(bold_dir.glob("*_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm.nii"))
                 tmp_dir = TemporaryDirectory()
-                # N4BiasFieldCorrection(
-                #     out_file=str(Path(tmp_dir.name) / "tmp.nii.gz"),
-                #     in_file=bold_path,
-                # )
-                # bold_img = nib.load(str(Path(tmp_dir.name) / "tmp.nii.gz"))
                 bold_img = nib.load(bold_path)
-                bold_data = np.squeeze(bold_img.get_fdata())
+                bold_data = np.squeeze(bold_img.dataobj[..., 0])
+                nib.Nifti1Image(bold_data, bold_img.affine).to_filename(Path(tmp_dir.name) / "tmp.nii.gz")
+                N4BiasFieldCorrection(
+                    out_file=str(Path(tmp_dir.name) / "tmp2.nii.gz"),
+                    in_file=str(Path(tmp_dir.name) / "tmp.nii.gz"),
+                )
+                bold_img = nib.load(str(Path(tmp_dir.name) / "tmp2.nii.gz"))
+                bold_data = bold_img.get_fdata()
 
                 # grab the voxels for this image
                 func_voxels = bold_data[gray_mask | white_mask]
@@ -126,6 +124,15 @@ def main():
                     full_output=True,
                 )
                 threshold_value = best_threshold[0]
+                # second pass threshold +/- 0.05
+                best_threshold, obj_value, _, _ = brute(
+                    gray_threshold_func,
+                    ranges=[(threshold_value - 0.05, threshold_value + 0.05)],
+                    Ns=200,
+                    workers=1,
+                    full_output=True,
+                )
+
                 obj_value = compute_hausdorff_distance(
                     gray_mask_img,
                     nib.Nifti1Image((func_graywhite > threshold_value).astype("f8"), gray_mask_img.affine),
@@ -170,8 +177,13 @@ def main():
     # merge the results
     results_df = pd.merge(medic_results_df, topup_results_df, on=["subject", "session", "bold"])
     # who wins?
-    results_df["medic_better"] = results_df["gray_hausdorff_medic"] < results_df["gray_hausdorff_topup"]
+    results_df["gray_hausdorff_distance"] = results_df["gray_hausdorff_medic"] - results_df["gray_hausdorff_topup"]
 
     print(results_df)
     # save the results
     results_df.to_csv(str(DATA_DIR / "hausdorff_distance_results.csv"), index=False)
+
+    print(ttest_rel(results_df["gray_hausdorff_medic"], results_df["gray_hausdorff_topup"]))
+    from IPython import embed
+
+    embed()

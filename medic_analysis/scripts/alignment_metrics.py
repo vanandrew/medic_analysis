@@ -6,6 +6,7 @@ from warpkit.utilities import create_brain_mask
 import pandas as pd
 from scipy.stats import ttest_rel
 from skimage.morphology import ball
+from skimage.filters import gaussian
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from medic_analysis.common.align import roc_metrics
 from . import DATA_DIR
@@ -71,15 +72,16 @@ def rolling_window(data1, data2, window, mask, func):
 
 def nmi(x, y):
     """
-        Compute normalized mutual information I(x,y)/sqrt(H(x)*H(y)) of two
-        discrete variables x and y.
+    Compute normalized mutual information I(x,y)/sqrt(H(x)*H(y)) of two
+    discrete variables x and y.
 
-        Parameters:
-        - x, y: two integer vectors of the same length
-    Neighborhood
-        Returns:
-        - z: normalized mutual information z=I(x,y)/sqrt(H(x)*H(y))
+    Parameters:
+    - x, y: two integer vectors of the same length
+    Returns:
+    - z: normalized mutual information z=I(x,y)/sqrt(H(x)*H(y))
     """
+    x, _ = np.histogram(x, bins=256)
+    y, _ = np.histogram(y, bins=256)
     assert x.size == y.size, "Input vectors x and y must have the same length."
     if x.size < 3:
         return np.nan
@@ -112,14 +114,16 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
     # load the wmparc file
     wmparc_img = nib.load(wmparc_path)
     wmparc_data = wmparc_img.get_fdata().squeeze()
+    wmparc_brain = wmparc_data != 0
 
     # get the average image
     avg_path = [f for f in bold_dir.glob("*_Swgt_norm.nii")][0]
+    # avg_path = [f for f in bold_dir.glob("*_Swgt_norm_avg.nii.gz")][0]
     avg_img = nib.load(avg_path)
     avg_data = avg_img.dataobj[..., 0]
+    # avg_data = avg_img.get_fdata().squeeze()
     # get the brain mask
-    # brain_mask = create_brain_mask(avg_data)
-    brain_mask = wmparc_data != 0
+    brain_mask = create_brain_mask(avg_data)
 
     # get the t1 and t2 images
     t1_img = nib.load(t1_path)
@@ -140,22 +144,19 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
     grad_corr_t1 = correlation(grad_t1_data[brain_mask], grad_avg_data[brain_mask])
     grad_corr_t2 = correlation(grad_t2_data[brain_mask], grad_avg_data[brain_mask])
 
-    # get histogram of data
-    t1_hist, _ = np.histogram(t1_data[brain_mask], bins=256)
-    t2_hist, _ = np.histogram(t2_data[brain_mask], bins=256)
-    avg_hist, _ = np.histogram(avg_data[brain_mask], bins=256)
-
     # get normalized mutual information
-    nmi_t1 = nmi(t1_hist, avg_hist)
-    nmi_t2 = nmi(t2_hist, avg_hist)
+    nmi_t1 = nmi(t1_data[brain_mask], avg_data[brain_mask])
+    nmi_t2 = nmi(t2_data[brain_mask], avg_data[brain_mask])
 
     # create spotlight element
     spotlight = ball(3)
-    local_corr_t1 = rolling_window(t1_data, avg_data, spotlight, brain_mask, correlation2).mean()
-    local_corr_t2 = rolling_window(t2_data, avg_data, spotlight, brain_mask, correlation2).mean()
+    local_corr_t1 = rolling_window(t1_data, avg_data, spotlight, brain_mask, correlation2) * brain_mask
+    local_corr_t2 = rolling_window(t2_data, avg_data, spotlight, brain_mask, correlation2) * brain_mask
+    local_corr_mean_t1 = local_corr_t1.mean()
+    local_corr_mean_t2 = local_corr_t2.mean()
 
     # compute ROC metrics
-    roc_gw, roc_ie, roc_vw = roc_metrics(avg_data, wmparc_data)
+    roc_gw, roc_ie, roc_vw, roc_cb_ie = roc_metrics(avg_data, wmparc_data)
 
     # return the results
     return {
@@ -171,9 +172,12 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
         "nmi_t2": nmi_t2,
         "local_corr_t1": local_corr_t1,
         "local_corr_t2": local_corr_t2,
+        "local_corr_mean_t1": local_corr_mean_t1,
+        "local_corr_mean_t2": local_corr_mean_t2,
         "roc_gw": roc_gw,
         "roc_ie": roc_ie,
         "roc_vw": roc_vw,
+        "roc_cb_ie": roc_cb_ie,
     }
 
 
@@ -190,12 +194,19 @@ def main():
         "grad_corr_t2": [],
         "nmi_t1": [],
         "nmi_t2": [],
-        "local_corr_t1": [],
-        "local_corr_t2": [],
+        "local_corr_mean_t1": [],
+        "local_corr_mean_t2": [],
         "roc_gw": [],
         "roc_ie": [],
         "roc_vw": [],
+        "roc_cb_ie": [],
     }
+
+    # create dicts for local correlation
+    local_corr_t1_medic = {}
+    local_corr_t2_medic = {}
+    local_corr_t1_topup = {}
+    local_corr_t2_topup = {}
 
     # create a ProcessPoolExecutor
     with ProcessPoolExecutor(max_workers=10) as executor:
@@ -248,6 +259,7 @@ def main():
                             run_num,
                         )
                     )
+            # break
 
         # loop over futures
         # for future in futures:
@@ -260,8 +272,9 @@ def main():
             print(results["subject"])
             print(results["session"])
             print(results["run"])
-            print(results)
+            # print(results)
 
+            # add stats to datalist
             datalist["pipeline"].append(results["pipeline"])
             datalist["subject"].append(results["subject"])
             datalist["session"].append(results["session"])
@@ -272,11 +285,47 @@ def main():
             datalist["grad_corr_t2"].append(results["grad_corr_t2"])
             datalist["nmi_t1"].append(results["nmi_t1"])
             datalist["nmi_t2"].append(results["nmi_t2"])
-            datalist["local_corr_t1"].append(results["local_corr_t1"])
-            datalist["local_corr_t2"].append(results["local_corr_t2"])
+            datalist["local_corr_mean_t1"].append(results["local_corr_mean_t1"])
+            datalist["local_corr_mean_t2"].append(results["local_corr_mean_t2"])
             datalist["roc_gw"].append(results["roc_gw"])
             datalist["roc_ie"].append(results["roc_ie"])
             datalist["roc_vw"].append(results["roc_vw"])
+            datalist["roc_cb_ie"].append(results["roc_cb_ie"])
+
+            # add local correlation to lists
+            key = f"{results['subject']}_{results['session']}_{results['run']}"
+            if results["pipeline"] == "MEDIC":
+                local_corr_t1_medic[key] = results["local_corr_t1"]
+                local_corr_t2_medic[key] = results["local_corr_t2"]
+            else:
+                local_corr_t1_topup[key] = results["local_corr_t1"]
+                local_corr_t2_topup[key] = results["local_corr_t2"]
+
+    # sort local correlations by key
+    local_corr_t1_medic = [v for _, v in sorted(local_corr_t1_medic.items(), key=lambda item: item[0])]
+    local_corr_t2_medic = [v for _, v in sorted(local_corr_t2_medic.items(), key=lambda item: item[0])]
+    local_corr_t1_topup = [v for _, v in sorted(local_corr_t1_topup.items(), key=lambda item: item[0])]
+    local_corr_t2_topup = [v for _, v in sorted(local_corr_t2_topup.items(), key=lambda item: item[0])]
+
+    # convert local correlation lists to arrays
+    local_corr_t1_medic = np.stack(local_corr_t1_medic, axis=-1)
+    local_corr_t2_medic = np.stack(local_corr_t2_medic, axis=-1)
+    local_corr_t1_topup = np.stack(local_corr_t1_topup, axis=-1)
+    local_corr_t2_topup = np.stack(local_corr_t2_topup, axis=-1)
+
+    # compute ttests for local correlation
+    local_corr_t1 = ttest_rel(local_corr_t1_medic, local_corr_t1_topup, axis=-1)
+    local_corr_t2 = ttest_rel(local_corr_t2_medic, local_corr_t2_topup, axis=-1)
+    local_corr_t1_mask = local_corr_t1.pvalue < 0.05
+    local_corr_t2_mask = local_corr_t2.pvalue < 0.05
+    local_corr_t1_tstat = local_corr_t1.statistic * local_corr_t1_mask
+    local_corr_t2_tstat = local_corr_t2.statistic * local_corr_t2_mask
+    # get rid of nans
+    local_corr_t1_tstat = np.nan_to_num(local_corr_t1_tstat)
+    local_corr_t2_tstat = np.nan_to_num(local_corr_t2_tstat)
+    affine = nib.load(t1_path).affine
+    nib.Nifti1Image(local_corr_t1_tstat, affine).to_filename(str(DATA_DIR / "local_corr_t1_tstat.nii.gz"))
+    nib.Nifti1Image(local_corr_t2_tstat, affine).to_filename(str(DATA_DIR / "local_corr_t2_tstat.nii.gz"))
 
     # get dataframe
     df = pd.DataFrame(datalist)
@@ -295,34 +344,52 @@ def main():
     df["difference_grad_corr_t2"] = df["grad_corr_t2_medic"] - df["grad_corr_t2_topup"]
     df["difference_nmi_t1"] = df["nmi_t1_medic"] - df["nmi_t1_topup"]
     df["difference_nmi_t2"] = df["nmi_t2_medic"] - df["nmi_t2_topup"]
-    df["difference_local_corr_t1"] = df["local_corr_t1_medic"] - df["local_corr_t1_topup"]
-    df["difference_local_corr_t2"] = df["local_corr_t2_medic"] - df["local_corr_t2_topup"]
+    df["difference_local_corr_mean_t1"] = df["local_corr_mean_t1_medic"] - df["local_corr_mean_t1_topup"]
+    df["difference_local_corr_mean_t2"] = df["local_corr_mean_t2_medic"] - df["local_corr_mean_t2_topup"]
     df["difference_ROC_gw"] = df["roc_gw_medic"] - df["roc_gw_topup"]
     df["difference_ROC_ie"] = df["roc_ie_medic"] - df["roc_ie_topup"]
     df["difference_ROC_vw"] = df["roc_vw_medic"] - df["roc_vw_topup"]
+    df["difference_ROC_cb_ie"] = df["roc_cb_ie_medic"] - df["roc_cb_ie_topup"]
     print(df)
     df.to_csv(str(DATA_DIR / "alignment_metrics.csv"), index=False)
     # compute t-tests
     print("T-tests")
     print("T1 Corr:")
     print(ttest_rel(df["corr_t1_medic"], df["corr_t1_topup"]))
+    print(ttest_rel(df["corr_t1_medic"], df["corr_t1_topup"]).pvalue < 0.05)
     print("T2 Corr:")
     print(ttest_rel(df["corr_t2_medic"], df["corr_t2_topup"]))
+    print(ttest_rel(df["corr_t2_medic"], df["corr_t2_topup"]).pvalue < 0.05)
     print("T1 Grad Corr:")
     print(ttest_rel(df["grad_corr_t1_medic"], df["grad_corr_t1_topup"]))
+    print(ttest_rel(df["grad_corr_t1_medic"], df["grad_corr_t1_topup"]).pvalue < 0.05)
     print("T2 Grad Corr:")
     print(ttest_rel(df["grad_corr_t2_medic"], df["grad_corr_t2_topup"]))
+    print(ttest_rel(df["grad_corr_t2_medic"], df["grad_corr_t2_topup"]).pvalue < 0.05)
     print("T1 NMI:")
     print(ttest_rel(df["nmi_t1_medic"], df["nmi_t1_topup"]))
+    print(ttest_rel(df["nmi_t1_medic"], df["nmi_t1_topup"]).pvalue < 0.05)
     print("T2 NMI:")
     print(ttest_rel(df["nmi_t2_medic"], df["nmi_t2_topup"]))
+    print(ttest_rel(df["nmi_t2_medic"], df["nmi_t2_topup"]).pvalue < 0.05)
     print("T1 Local Corr:")
-    print(ttest_rel(df["local_corr_t1_medic"], df["local_corr_t1_topup"]))
+    print(ttest_rel(df["local_corr_mean_t1_medic"], df["local_corr_mean_t1_topup"]))
+    print(ttest_rel(df["local_corr_mean_t1_medic"], df["local_corr_mean_t1_topup"]).pvalue < 0.05)
     print("T2 Local Corr:")
-    print(ttest_rel(df["local_corr_t2_medic"], df["local_corr_t2_topup"]))
+    print(ttest_rel(df["local_corr_mean_t2_medic"], df["local_corr_mean_t2_topup"]))
+    print(ttest_rel(df["local_corr_mean_t2_medic"], df["local_corr_mean_t2_topup"]).pvalue < 0.05)
     print("ROC GW:")
     print(ttest_rel(df["roc_gw_medic"], df["roc_gw_topup"]))
+    print(ttest_rel(df["roc_gw_medic"], df["roc_gw_topup"]).pvalue < 0.05)
     print("ROC IE:")
     print(ttest_rel(df["roc_ie_medic"], df["roc_ie_topup"]))
+    print(ttest_rel(df["roc_ie_medic"], df["roc_ie_topup"]).pvalue < 0.05)
     print("ROC VW:")
     print(ttest_rel(df["roc_vw_medic"], df["roc_vw_topup"]))
+    print(ttest_rel(df["roc_vw_medic"], df["roc_vw_topup"]).pvalue < 0.05)
+    print("ROC CB IE:")
+    print(ttest_rel(df["roc_cb_ie_medic"], df["roc_cb_ie_topup"]))
+    print(ttest_rel(df["roc_cb_ie_medic"], df["roc_cb_ie_topup"]).pvalue < 0.05)
+    from IPython import embed
+
+    embed()

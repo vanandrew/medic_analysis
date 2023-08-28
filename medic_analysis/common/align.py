@@ -71,6 +71,11 @@ def compute_ROC(true_positive_index, false_positive_index, data, number_of_divis
 def roc_metrics(image, parcel):
     strel = ball(1)
 
+    # get cerebellum
+    cerebellum = np.isin(parcel, [8, 47, 7, 46])
+    cerebellum_shell = binary_dilation(cerebellum, strel) & ~cerebellum
+    cerebellum_and_shell = cerebellum | cerebellum_shell
+
     # get gray matter and non gray matter
     gray_matter = ((parcel >= 1000) & (parcel <= 3000)) | np.isin(parcel, [47, 8, 51, 52, 12, 13, 49, 10, 16])
     non_gray_matter = ~gray_matter & (parcel != 0)
@@ -98,5 +103,10 @@ def roc_metrics(image, parcel):
         image[ventricles_and_shell],
         25,
     )
-
-    return ROC_gw, ROC_ie, ROC_vw
+    ROC_cb_ie = compute_ROC(
+        cerebellum[cerebellum_and_shell],
+        cerebellum_shell[cerebellum_and_shell],
+        image[cerebellum_and_shell],
+        25,
+    )
+    return ROC_gw, ROC_ie, ROC_vw, ROC_cb_ie

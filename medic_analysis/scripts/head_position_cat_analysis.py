@@ -37,7 +37,7 @@ def main():
     topup_func_path = output / "ses-01wTOPUP" / "bold1" / "sub-MSCHD02_b1_faln_xr3d_uwrp_on_MNI152_T1_2mm_Swgt_norm.nii"
     medic_fmaps_path = output / "ses-01wNEWPROC" / "bold1" / "MEDIC" / "sub-MSCHD02_b1_fieldmaps.nii"
     topup_mag_path = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_2.nii"
-    topup_mag_path_2 = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_1.nii" 
+    topup_mag_path_2 = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_1.nii"
     topup_fmaps_path = output / "ses-01wTOPUP" / "SEFM" / "sub-MSCHD02_sefm_Grp1_FMAP.nii"
 
     # load medic and topup workbench screenshots
@@ -82,7 +82,7 @@ def main():
         vmin=[topup_mag.get_fdata().min(), topup_mag_2.get_fdata().min(), -100],
         vmax=[topup_mag.get_fdata().max(), topup_mag_2.get_fdata().max(), 100],
         colormaps=["gray", "gray", "icefire"],
-        figure=subsubfigs[0]
+        figure=subsubfigs[0],
     )
     topup_fig.suptitle("(C) TOPUP Field Map", y=0.97, fontsize=fontsize_1)
     topup_axes = topup_fig.get_axes()

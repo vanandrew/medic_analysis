@@ -41,7 +41,7 @@ for subnum = 1:length(subjects)
             motiondat = textread([sessiondir '/bold' boldnum '/sub-' subject '_b' boldnum '_xr3d.dat'],'%s');
             rms = str2num(motiondat{end});
             
-            boldruns(end+1) = {[sessiondir '/cifti_timeseries_normalwall_atlas_freesurf/sub-' subject '_b' boldnum '_MNI152_T1_2mm_Swgt_norm_bpss_resid_LR_surf_subcort_32k_fsLR_brainstem_surfsmooth1.7_subcortsmooth1.7.dtseries.nii']};
+            boldruns(end+1) = {[sessiondir '/cifti_timeseries_normalwall_atlas_freesurf/sub-' subject '_b' boldnum '_MNI15dtseries2_T1_2mm_Swgt_norm_bpss_resid_LR_surf_subcort_32k_fsLR_brainstem_surfsmooth1.7_subcortsmooth1.7.dtseries.nii']};
             data = ft_read_cifti_mod([sessiondir '/cifti_timeseries_normalwall_atlas_freesurf/sub-' subject '_b' boldnum '_MNI152_T1_2mm_Swgt_norm_bpss_resid_LR_surf_subcort_32k_fsLR_brainstem_surfsmooth1.7_subcortsmooth1.7.dtseries.nii']);
             
             corr = FisherTransform(paircorr_mod(data.data(1:ncortverts,logical(tmask))'));

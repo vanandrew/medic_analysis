@@ -245,34 +245,6 @@ def main():
             f1.text(0.6, 0.51, f"(A) MEDIC", ha="center")
             f1.text(0.6, 0.01, f"(B) TOPUP", ha="center")
             break
-    plt.show()
-    """
-        f1 = plt.figure(figsize=(16, 8), layout="constrained")
-        f1_subfigs = f1.subfigures(1, 2)
-        data_plotter(
-            tSNR_difference[:4],
-            figure=f1_subfigs[0],
-            colorbar=True,
-            colorbar_label="tSNR Difference",
-            vmax=10,
-            vmin=-10,
-        )
-        f1_subfigs[0].text(0.6, 0.76, f"(A) {args.labels[0]}", ha="center")
-        f1_subfigs[0].text(0.6, 0.51, f"(B) {args.labels[1]}", ha="center")
-        f1_subfigs[0].text(0.6, 0.26, f"(C) {args.labels[2]}", ha="center")
-        f1_subfigs[0].text(0.6, 0.01, f"(D) {args.labels[3]}", ha="center")
-        data_plotter(
-            tSNR_difference[:4],
-            figure=f1_subfigs[1],
-            colorbar2=True,
-            colorbar2_label="tSNR Difference",
-            vmax=10,
-            vmin=-10,
-        )
-        f1_subfigs[1].text(0.4, 0.76, f"(E) {args.labels[4]}", ha="center")
-        f1_subfigs[1].text(0.4, 0.51, f"(F) {args.labels[5]}", ha="center")
-        f1_subfigs[1].text(0.4, 0.26, f"(G) {args.labels[6]}", ha="center")
-        f1_subfigs[1].text(0.4, 0.01, f"(H) {args.labels[14]}", ha="center")
 
     if args.plot_only is None or 2 in args.plot_only:
         # load field map files
@@ -337,5 +309,4 @@ def main():
             )
 
     # plot static field maps
-    plt.show()
-    """
+    # plt.show()
