@@ -56,7 +56,7 @@ def rolling_window(data1, data2, window, mask, func):
                 # now get the mask values for the indices
                 submask = mask[indices[:, 0], indices[:, 1], indices[:, 2]]
                 # if mask doesn't have at least two Trues, then skip
-                if np.sum(submask) < 2:
+                if np.sum(submask) < submask.size // 2:
                     continue
                 # now grab the data
                 subdata1 = data1[indices[:, 0], indices[:, 1], indices[:, 2]]
@@ -178,6 +178,7 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
         "roc_ie": roc_ie,
         "roc_vw": roc_vw,
         "roc_cb_ie": roc_cb_ie,
+        "brain_mask": brain_mask,
     }
 
 
@@ -200,6 +201,7 @@ def main():
         "roc_ie": [],
         "roc_vw": [],
         "roc_cb_ie": [],
+        "brain_mask": [],
     }
 
     # create dicts for local correlation
@@ -209,7 +211,7 @@ def main():
     local_corr_t2_topup = {}
 
     # create a ProcessPoolExecutor
-    with ProcessPoolExecutor(max_workers=10) as executor:
+    with ProcessPoolExecutor(max_workers=200) as executor:
         # create futures list
         futures = []
 
@@ -291,6 +293,7 @@ def main():
             datalist["roc_ie"].append(results["roc_ie"])
             datalist["roc_vw"].append(results["roc_vw"])
             datalist["roc_cb_ie"].append(results["roc_cb_ie"])
+            datalist["brain_mask"].append(results["brain_mask"])
 
             # add local correlation to lists
             key = f"{results['subject']}_{results['session']}_{results['run']}"
@@ -308,10 +311,22 @@ def main():
     local_corr_t2_topup = [v for _, v in sorted(local_corr_t2_topup.items(), key=lambda item: item[0])]
 
     # convert local correlation lists to arrays
+    num_runs = len(local_corr_t1_medic)
     local_corr_t1_medic = np.stack(local_corr_t1_medic, axis=-1)
     local_corr_t2_medic = np.stack(local_corr_t2_medic, axis=-1)
     local_corr_t1_topup = np.stack(local_corr_t1_topup, axis=-1)
     local_corr_t2_topup = np.stack(local_corr_t2_topup, axis=-1)
+
+    # mask out areas where medic/topup voxels have at least 99% non-zero values
+    percentage = 1
+    medic_t1_mask = (np.sum(local_corr_t1_medic != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
+    medic_t2_mask = (np.sum(local_corr_t2_medic != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
+    topup_t1_mask = (np.sum(local_corr_t1_topup != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
+    topup_t2_mask = (np.sum(local_corr_t2_topup != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
+    local_corr_t1_medic = local_corr_t1_medic * (medic_t1_mask & topup_t1_mask)
+    local_corr_t2_medic = local_corr_t2_medic * (medic_t2_mask & topup_t2_mask)
+    local_corr_t1_topup = local_corr_t1_topup * (medic_t1_mask & topup_t1_mask)
+    local_corr_t2_topup = local_corr_t2_topup * (medic_t2_mask & topup_t2_mask)
 
     # compute ttests for local correlation
     local_corr_t1 = ttest_rel(local_corr_t1_medic, local_corr_t1_topup, axis=-1)

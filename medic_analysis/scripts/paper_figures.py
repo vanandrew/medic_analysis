@@ -1,4 +1,5 @@
 """Main script for generating paper figures."""
+import os
 import argparse
 import json
 from pathlib import Path
@@ -9,8 +10,6 @@ import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import pandas as pd
 import seaborn as sns
-from scipy.io import loadmat
-from warpkit.utilities import create_brain_mask
 from medic_analysis.common import data_plotter, render_dynamic_figure, hz_limits_to_mm
 from . import (
     DATA_DIR,
@@ -52,6 +51,17 @@ WASHU_DATA_DIR = Path("/net/10.20.145.34/DOSENBACH02/GMT2/Andrew/SLICETEST/deriv
 PENN_DATA_DIR = Path("/net/10.20.145.34/DOSENBACH02/GMT2/Andrew/UPenn/derivatives/me_pipeline")
 MINN_DATA_DIR = Path("/net/10.20.145.34/DOSENBACH02/GMT2/Andrew/UMinn/derivatives")
 MINN_DATA_DIR2 = Path("/data/nil-bluearc/GMT/Laumann/Pilot_ME_res/BIO10001/bids/derivatives/me_pipeline")
+
+
+def plot_box_plot(data, variable, label, ax):
+    subdata = (
+        data[[f"{variable}_medic", f"{variable}_topup"]]
+        .rename(columns={f"{variable}_medic": "MEDIC", f"{variable}_topup": "TOPUP"})
+        .melt(var_name=label)
+    )
+    sb = sns.boxplot(data=subdata, x="value", y=label, order=["MEDIC", "TOPUP"], ax=ax)
+    sb.set_xlabel("")
+    return sb
 
 
 # figure 1
@@ -103,10 +113,10 @@ def head_position_fieldmap(data):
     # create a grid spec for the figure
     gs0 = GridSpec(3, 1, left=0.025, right=0.1, bottom=0.05, top=0.95)
     gs1 = GridSpec(
-        3, 3, left=0.1, right=0.5, bottom=0.05, top=0.95, hspace=0.1, wspace=0.05, width_ratios=[1, 1.5, 1.5]
+        3, 3, left=0.1, right=0.5, bottom=0.025, top=0.975, hspace=0.1, wspace=0.05, width_ratios=[1, 1.5, 1.5]
     )
     gs2 = GridSpec(
-        3, 3, left=0.55, right=0.95, bottom=0.05, top=0.95, hspace=0.1, wspace=0.05, width_ratios=[1, 1.5, 1.5]
+        3, 3, left=0.55, right=0.95, bottom=0.025, top=0.975, hspace=0.1, wspace=0.05, width_ratios=[1, 1.5, 1.5]
     )
 
     # create subplots
@@ -150,6 +160,11 @@ def head_position_fieldmap(data):
     sbs[14].set_xlabel(f"(E) {labels[5]} (10.8 deg)")
     sbs[17].set_xlabel(f"(F) {labels[6]} (8.6 deg)")
     f0.savefig(FIGURES_DIR / "fieldmap_differences.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure1.png").unlink(missing_ok=True)
+    Path("figure1.png").symlink_to("fieldmap_differences.png")
+    os.chdir(current_dir)
 
 
 # figure 2
@@ -231,12 +246,13 @@ def head_concatenation(data):
 
     # create gridspec for surface data
     gs_low_left = 0.325
-    pad = 0.025
-    width = 0.19
+    pad = 0.05
+    width = 0.185
+    colorbar_pad = 0.015
     gs_low_right = gs_low_left + width
     gs_high_left = gs_low_right + pad
     gs_high_right = gs_high_left + width * 2
-    colorbar_left = gs_high_right + pad
+    colorbar_left = gs_high_right + colorbar_pad
     gs_low = GridSpec(3, 1, left=gs_low_left, right=gs_low_right, bottom=0.08, top=0.95, wspace=0.01, hspace=0.01)
     gs_high = GridSpec(3, 2, left=gs_high_left, right=gs_high_right, bottom=0.08, top=0.95, wspace=0.01, hspace=0.01)
 
@@ -286,12 +302,12 @@ def head_concatenation(data):
     ax_medic_occipital.imshow(medic_occipital)
     ax_medic_occipital.set_xticks([])
     ax_medic_occipital.set_yticks([])
-    ax_medic_occipital.set_xlabel("MEDIC (High Motion)")
+    ax_medic_occipital.set_xlabel("MEDIC (High Motion), R = 0.363")
     ax_topup_occipital = f.add_subplot(gs_high[2, 1])
     ax_topup_occipital.imshow(topup_occipital)
     ax_topup_occipital.set_xticks([])
     ax_topup_occipital.set_yticks([])
-    ax_topup_occipital.set_xlabel("TOPUP (High Motion)")
+    ax_topup_occipital.set_xlabel("TOPUP (High Motion), R = 0.322")
     sns.set(
         font="Lato",
         font_scale=1,
@@ -317,12 +333,16 @@ def head_concatenation(data):
     cbar.ax.set_ylabel("Correlation")
 
     f.savefig(FIGURES_DIR / "head_position_concat.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure2.png").unlink(missing_ok=True)
+    Path("figure2.png").symlink_to("head_position_concat.png")
+    os.chdir(current_dir)
 
 
 # figure 3
 def group_template_comparison(data):
     aa_dir = Path(data)
-    # data = loadmat(str(aa_dir / "Medic_analysis.mat"))
     with open(aa_dir / "paircorr.json", "r") as f:
         data = json.load(f)
 
@@ -331,22 +351,9 @@ def group_template_comparison(data):
     medic_similarities = df.MEDIC.to_numpy()
     topup_similarities = df.TOPUP.to_numpy()
 
-    # # similarities
-    # similarities = data["similarities"].ravel()
-    # # get medic_topup labels
-    # medic_topup_labels = data["medic_topup"].ravel()
-    # medic_labels = medic_topup_labels == 1
-    # topup_labels = medic_topup_labels == 2
-    # # get medic and topup similarities
-    # medic_similarities = similarities[medic_labels]
-    # topup_similarities = similarities[topup_labels]
-
     # get where medic is better and topup is better
     medic_better = medic_similarities > topup_similarities
     topup_better = medic_similarities < topup_similarities
-
-    # # ensure size adds up
-    # assert medic_better.size + topup_better.size == len(similarities)
 
     # get similarities where medic is better and topup is better
     medic_better_similarities_medic = medic_similarities[medic_better]
@@ -356,23 +363,24 @@ def group_template_comparison(data):
 
     # plot group similarities
     f = plt.figure(figsize=(90 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
-    subfigs = f.subfigures(1, 2, wspace=0.1)
-    left_subfig = subfigs[0].subfigures(2, 1, hspace=0.1)
-    left_subfig[0].suptitle("(A) Mean Similarity to ABCD Group Template")
-    ax1 = left_subfig[0].subplots(1, 1)
+    subfigs = f.subfigures(1, 2, wspace=0.1, hspace=0.1, width_ratios=[1, 1])
+    gs = GridSpec(20, 10, left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.05)
+    ax1 = subfigs[1].add_subplot(gs[:10, :])
     sns.scatterplot(topup_better_similarities_topup, medic_better_similarities_topup, ax=ax1)
     sns.scatterplot(topup_better_similarities_medic, medic_better_similarities_medic, ax=ax1)
     ax1.axline((0, 0), slope=1, color="black", linestyle="--")
     ax1.set_xlabel("TOPUP Mean Similarity (Correlation)")
     ax1.set_ylabel("MEDIC Mean Similarity (Correlation)")
+    ax1.set_aspect("equal")
+    ax1.set_title("(B) Mean Similarity to ABCD Group Average", pad=20)
     vmax = 0.55
     vmin = 0.3
     ax1.set_xlim([vmin, vmax])
     ax1.set_ylim([vmin, vmax])
     ax1.set_xticks(np.arange(vmin, vmax, 0.05))
     ax1.set_yticks(np.arange(vmin, vmax, 0.05))
-    ax1.text(0.1, 0.9, "MEDIC more similar to Group Template", transform=ax1.transAxes)
-    ax1.text(0.25, 0.1, "TOPUP more similar to Group Template", transform=ax1.transAxes)
+    ax1.text(0.1, 0.9, "MEDIC more similar to Group Average", transform=ax1.transAxes)
+    ax1.text(0.25, 0.1, "TOPUP more similar to Group Average", transform=ax1.transAxes)
     x = np.array([-0.1, 0.7])
     y = x
     y2 = np.ones(x.shape) * 0.6
@@ -384,19 +392,18 @@ def group_template_comparison(data):
     tstat_surface_path = DATA_DIR / "group_tstat_surface.png"
     tstat_surface = Image.open(tstat_surface_path)
     sns.set(font="Lato", font_scale=1, palette="pastel", style="dark")
-    gs = GridSpec(10, 10, left=0.05, right=0.95, bottom=0.05, top=0.95)
-    left_subfig[1].suptitle("(B) Vertex-wise t-statistic")
-    ax2 = left_subfig[1].add_subplot(gs[:7, :])
+    ax2 = subfigs[1].add_subplot(gs[11:, :])
     ax2.imshow(tstat_surface)
     ax2.set_xticks([])
     ax2.set_yticks([])
+    ax2.set_title("(C) Vertex-wise similarity t-statistic map", pad=20)
     sns.set(font="Lato", font_scale=1, palette="pastel", style="white")
-    cbar_ax = left_subfig[1].add_subplot(gs[7:, 1:9])
+    cbar_ax = subfigs[1].add_subplot(gs[19:, :])
     spectral_map = plt.cm.get_cmap("Spectral")
     spectral_rmap = spectral_map.reversed()
     pl = cbar_ax.imshow(np.array([[-6, 6], [6, -6]]), vmin=-6, vmax=6, cmap=spectral_rmap)
     cbar_ax.set_visible(False)
-    cbar = left_subfig[1].colorbar(
+    cbar = subfigs[1].colorbar(
         pl,
         ax=cbar_ax,
         location="bottom",
@@ -416,28 +423,28 @@ def group_template_comparison(data):
     topup_occipital_path = DATA_DIR / "topup_occipital_20008.png"
     topup_occipital = Image.open(topup_occipital_path)
     gs = GridSpec(20, 10, left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.05)
-    subfigs[1].suptitle("(C) Single Run Surface Comparison")
     sns.set(font="Lato", font_scale=1, palette="pastel", style="dark")
-    axl1 = subfigs[1].add_subplot(gs[:6, 1:9])
-    axl2 = subfigs[1].add_subplot(gs[6:12, 1:9])
-    axl3 = subfigs[1].add_subplot(gs[12:18, 1:9])
+    axl1 = subfigs[0].add_subplot(gs[:5, :])
+    axl2 = subfigs[0].add_subplot(gs[7:12, :])
+    axl3 = subfigs[0].add_subplot(gs[13:18, :])
     axl1.imshow(group_template_abcd)
     axl1.set_xticks([])
     axl1.set_yticks([])
-    axl1.set_xlabel("ABCD Group Template")
+    axl1.set_xlabel("ABCD Group Average (N = 3928)")
+    axl1.set_title("(A) Single Subject Comparison to Group Average", pad=20)
     axl2.imshow(medic_occipital)
     axl2.set_xticks([])
     axl2.set_yticks([])
-    axl2.set_xlabel("MEDIC")
+    axl2.set_xlabel("MEDIC (R = 0.361)")
     axl3.imshow(topup_occipital)
     axl3.set_xticks([])
     axl3.set_yticks([])
-    axl3.set_xlabel("TOPUP")
+    axl3.set_xlabel("TOPUP (R = 0.342)")
     sns.set(font="Lato", font_scale=1, palette="pastel", style="white")
-    cbar_ax = subfigs[1].add_subplot(gs[18:, 1:9])
+    cbar_ax = subfigs[0].add_subplot(gs[19:, :])
     pl = cbar_ax.imshow(np.array([[-0.5, 0.5], [0.5, -0.5]]), vmin=-0.5, vmax=0.5, cmap=nilearn_cmaps["roy_big_bl"])
     cbar_ax.set_visible(False)
-    cbar = subfigs[1].colorbar(
+    cbar = subfigs[0].colorbar(
         pl,
         ax=cbar_ax,
         location="bottom",
@@ -449,6 +456,11 @@ def group_template_comparison(data):
     # create axis for colorbar
     cbar.ax.set_xlabel("Correlation")
     f.savefig(FIGURES_DIR / "group_template_compare.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure3.png").unlink(missing_ok=True)
+    Path("figure3.png").symlink_to("group_template_compare.png")
+    os.chdir(current_dir)
 
 
 # figure 4
@@ -579,22 +591,91 @@ def fmap_comparison(data_dir):
 
     # save figure
     f.savefig(FIGURES_DIR / "fieldmap_comparison.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure4.png").unlink(missing_ok=True)
+    Path("figure4.png").symlink_to("fieldmap_comparison.png")
+    os.chdir(current_dir)
+
+
+# figure 5
+def spotlight_comparison(data):
+    # load t1 and t2 t stat maps
+    t1_tstat = nib.load(Path(data) / "local_corr_t1_tstat.nii.gz").get_fdata().squeeze()
+    t2_tstat = nib.load(Path(data) / "local_corr_t2_tstat.nii.gz").get_fdata().squeeze()
+    t1_atlas_exemplar = nib.load(
+        AA_DATA_DIR / "sub-20008" / "T1" / "atlas" / "sub-20008_T1w_debias_avg_on_MNI152_T1_2mm.nii.gz"
+    ).get_fdata().squeeze()
+    t2_atlas_exemplar = nib.load(
+        AA_DATA_DIR / "sub-20008" / "T1" / "atlas" / "sub-20008_T2w_debias_avg_on_MNI152_T1_2mm.nii.gz"
+    ).get_fdata().squeeze()
+    atlas = nib.load("/data/petsun43/data1/atlas/MNI152/MNI152_T1_2mm.nii").get_fdata().squeeze()
+
+    # choose slices to iterate over
+    slices = np.linspace(16, t1_tstat.shape[2] - 20, 9).astype(int)[::-1]
+
+    # create figure
+    f = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
+
+    # create gridspec
+    gs = GridSpec(3, 3, left=0.05, right=0.95, bottom=0.03, top=0.97, wspace=0.03, hspace=0.03)
+
+    # create subfigures
+    subfigs = f.subfigures(1, 3, width_ratios=[1, 5, 5], wspace=0.03)
+
+    cbar_ax = subfigs[0].add_subplot(1, 1, 1)
+    cbar_ax.axis("off")
+
+    # create axes for each subfigure
+    axes_list1 = []
+    for i in range(3):
+        for j in range(3):
+            axes_list1.append(subfigs[1].add_subplot(gs[i, j]))
+    axes_list2 = []
+    for i in range(3):
+        for j in range(3):
+            axes_list2.append(subfigs[2].add_subplot(gs[i, j]))
+
+    # plot slices, iterate over list
+    for i, s in enumerate(slices):
+        ax1 = axes_list1[i]
+        ax1.imshow(t1_atlas_exemplar[..., s].T, cmap="gray", origin="lower")
+        a = ax1.imshow(t1_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
+        ax1.set_xticks([])
+        ax1.set_yticks([])
+        if i == 0:
+            source_plot = a
+        ax2 = axes_list2[i]
+        ax2.imshow(t2_atlas_exemplar[..., s].T, cmap="gray", origin="lower")
+        ax2.imshow(t2_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
+        ax2.set_xticks([])
+        ax2.set_yticks([])
+    axes_list1[7].set_xlabel("(A) T1w $R^2$ Spotlight")
+    axes_list2[7].set_xlabel("(B) T2w $R^2$ Spotlight")
+    # create axis for colorbar
+    cbar = subfigs[0].colorbar(
+        source_plot,
+        ax=cbar_ax,
+        location="left",
+        orientation="vertical",
+        aspect=40,
+        pad=-0.5,
+        fraction=1.0,
+    )
+    cbar.ax.set_ylabel("t-statistic (MEDIC > TOPUP)", labelpad=0.25)
+
+    f.savefig(FIGURES_DIR / "spotlight_comparison.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure5.png").unlink(missing_ok=True)
+    Path("figure5.png").symlink_to("spotlight_comparison.png")
+    os.chdir(current_dir)
 
 
 # figure 6
 def alignment_metrics(data):
     # plot stats
     data = pd.read_csv(data)
-
-    def plot_box_plot(data, variable, label, ax):
-        subdata = (
-            data[[f"{variable}_medic", f"{variable}_topup"]]
-            .rename(columns={f"{variable}_medic": "MEDIC", f"{variable}_topup": "TOPUP"})
-            .melt(var_name=label)
-        )
-        sb = sns.boxplot(data=subdata, x="value", y=label, order=["MEDIC", "TOPUP"], ax=ax)
-        sb.set_xlabel("")
-        return sb
 
     # create figures
     fig = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
@@ -630,76 +711,27 @@ def alignment_metrics(data):
 
     # save figure
     fig.savefig(FIGURES_DIR / "alignment_metrics.png", dpi=100)
-
-
-# figure 5
-def spotlight_comparison(data):
-    # load t1 and t2 t stat maps
-    t1_tstat = nib.load(Path(data) / "local_corr_t1_tstat.nii.gz").get_fdata().squeeze()
-    t2_tstat = nib.load(Path(data) / "local_corr_t2_tstat.nii.gz").get_fdata().squeeze()
-    atlas = nib.load("/data/petsun43/data1/atlas/MNI152/MNI152_T1_2mm.nii").get_fdata().squeeze()
-
-    # choose slices to iterate over
-    slices = np.linspace(10, t1_tstat.shape[2] - 20, 9).astype(int)[::-1]
-
-    # create figure
-    f = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
-
-    # create gridspec
-    gs = GridSpec(3, 3, left=0.05, right=0.95, bottom=0.03, top=0.97, wspace=0.03, hspace=0.03)
-
-    # create subfigures
-    subfigs = f.subfigures(1, 3, width_ratios=[1, 5, 5], wspace=0.03)
-
-    cbar_ax = subfigs[0].add_subplot(1, 1, 1)
-    cbar_ax.axis("off")
-
-    # create axes for each subfigure
-    axes_list1 = []
-    for i in range(3):
-        for j in range(3):
-            axes_list1.append(subfigs[1].add_subplot(gs[i, j]))
-    axes_list2 = []
-    for i in range(3):
-        for j in range(3):
-            axes_list2.append(subfigs[2].add_subplot(gs[i, j]))
-
-    # plot slices, iterate over list
-    for i, s in enumerate(slices):
-        ax1 = axes_list1[i]
-        ax1.imshow(atlas[..., s].T, cmap="gray", origin="lower")
-        a = ax1.imshow(t1_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
-        ax1.set_xticks([])
-        ax1.set_yticks([])
-        if i == 0:
-            source_plot = a
-        ax2 = axes_list2[i]
-        ax2.imshow(atlas[..., s].T, cmap="gray", origin="lower")
-        ax2.imshow(t2_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
-        ax2.set_xticks([])
-        ax2.set_yticks([])
-    axes_list1[7].set_xlabel("(A) T1w $R^2$ Spotlight")
-    axes_list2[7].set_xlabel("(B) T2w $R^2$ Spotlight")
-    # create axis for colorbar
-    cbar = subfigs[0].colorbar(
-        source_plot,
-        ax=cbar_ax,
-        location="left",
-        orientation="vertical",
-        aspect=40,
-        pad=-0.5,
-        fraction=1.0,
-    )
-    cbar.ax.set_ylabel("t-statistic (MEDIC > TOPUP)", labelpad=0.25)
-
-    f.savefig(FIGURES_DIR / "spotlight_comparison.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure6.png").unlink(missing_ok=True)
+    Path("figure6.png").symlink_to("alignment_metrics.png")
+    os.chdir(current_dir)
 
 
 # figure 7
 def tsnr_comparision(data):
     # load tsnr
     tsnr_table = pd.read_csv(data)
-    pass
+    f = plt.figure(figsize=(90 * MM_TO_INCHES * 3, 45 * MM_TO_INCHES * 3), layout="constrained")
+    ax = f.add_subplot(1, 1, 1)
+    plot_box_plot(tsnr_table, "mean_tsnr_masked", "TSNR", ax)
+    ax.set_xlim([0, 160])
+    f.savefig(FIGURES_DIR / "tsnr.png", dpi=100)
+    current_dir = os.getcwd()
+    os.chdir(FIGURES_DIR)
+    Path("figure7.png").unlink(missing_ok=True)
+    Path("figure7.png").symlink_to("tsnr.png")
+    os.chdir(current_dir)
 
 
 # figure 10
@@ -832,12 +864,15 @@ def main():
         fmap_comparison(args.figure_4_data)
 
     if args.figures is None or 5 in args.figures:
-        alignment_metrics(args.figure_5_data)
-
-    if args.figures is None or 6 in args.figures:
         spotlight_comparison(args.figure_6_data)
 
-    if 10 in args.figures:
+    if args.figures is None or 6 in args.figures:
+        alignment_metrics(args.figure_5_data)
+
+    if args.figures is None or 7 in args.figures:
+        tsnr_comparision(args.figure_7_data)
+
+    if args.figures is not None and 10 in args.figures:
         head_position_videos(args.figure_10_data)
 
     plt.show()

@@ -208,7 +208,7 @@ def main():
                 total_readout_time,
                 phase_encoding_direction,
                 int(run),
-                border_size=5,
+                border_size=2,
                 svd_filt=10,
                 n_cpus=16,
                 debug=False,
