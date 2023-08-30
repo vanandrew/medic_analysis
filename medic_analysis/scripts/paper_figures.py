@@ -21,13 +21,13 @@ from nilearn.plotting.cm import _cmap_d as nilearn_cmaps
 
 
 # Set global seaborn figure settings
-sns.set_theme(
-    font="Inter",
-    font_scale=1,
-    palette="pastel",
-    style="white",
-    rc={
-        "figure.dpi": 100,
+GLOBAL_SETTINGS = {
+    "font": "Satoshi",
+    "font_scale": 1,
+    "palette": "pastel",
+    "style": "white",
+    "rc": {
+        "figure.dpi": 150,
         "font.size": 8,
         "axes.titlesize": 8,
         "axes.titlepad": 0,
@@ -35,10 +35,15 @@ sns.set_theme(
         "axes.labelpad": 0,
         "axes.linewidth": 0.5,
         "legend.title_fontsize": 8,
-        "ytick.labelsize": 7,
         "xtick.labelsize": 7,
+        "ytick.labelsize": 7,
+        "xtick.major.width": 0.5,
+        "ytick.major.width": 0.5,
+        "xtick.minor.width": 0.5,
+        "ytick.minor.width": 0.5,
     },
-)
+}
+sns.set_theme(**GLOBAL_SETTINGS)
 LOWER_FONT_SIZE = 5
 
 
@@ -138,12 +143,36 @@ def head_position_fieldmap(data):
     f0 = plt.figure(figsize=(180 * MM_TO_INCHES, 90 * MM_TO_INCHES), layout="constrained")
 
     # create a grid spec for the figure
-    gs0 = GridSpec(1, 1, left=0.07, right=0.125, bottom=0.025, top=0.975)
+    bottom = 0.03
+    top = 0.97
+    left_edge_1 = 0.125
+    right_edge_2 = 0.99
+    pad = 0.02
+    width = (right_edge_2 - left_edge_1 - pad) / 2
+    right_edge_1 = left_edge_1 + width
+    left_edge_2 = right_edge_1 + pad
+    gs0 = GridSpec(1, 1, left=0.05, right=0.1, bottom=bottom, top=top)
     gs1 = GridSpec(
-        3, 3, left=0.15, right=0.55, bottom=0.05, top=1, hspace=0.025, wspace=0.05, width_ratios=[1, 1.5, 1.5]
+        3,
+        3,
+        left=left_edge_1,
+        right=right_edge_1,
+        bottom=bottom,
+        top=top,
+        hspace=0.025,
+        wspace=0.025,
+        width_ratios=[72, 110, 110],
     )
     gs2 = GridSpec(
-        3, 3, left=0.575, right=0.975, bottom=0.05, top=1, hspace=0.025, wspace=0.05, width_ratios=[1, 1.5, 1.5]
+        3,
+        3,
+        left=left_edge_2,
+        right=right_edge_2,
+        bottom=bottom,
+        top=top,
+        hspace=0.025,
+        wspace=0.025,
+        width_ratios=[72, 110, 110],
     )
 
     # create subplots
@@ -170,7 +199,7 @@ def head_position_fieldmap(data):
         colorbar=True,
         colorbar_aspect=60,
         colorbar_pad=0,
-        colorbar_labelpad=0,
+        colorbar_labelpad=-5,
         colorbar_alt_range=True,
         colorbar_alt_labelpad=0,
         fraction=0.3,
@@ -180,12 +209,12 @@ def head_position_fieldmap(data):
         axes_list=axes_list,
     )
     sbs = f0.get_axes()
-    sbs[2].set_xlabel(f"(A) {labels[1]} (15.0 deg)")
-    sbs[5].set_xlabel(f"(B) {labels[2]} (9.8 deg)")
-    sbs[8].set_xlabel(f"(C) {labels[3]} (10.6 deg)")
-    sbs[11].set_xlabel(f"(D) {labels[4]} (13.7 deg)")
-    sbs[14].set_xlabel(f"(E) {labels[5]} (10.8 deg)")
-    sbs[17].set_xlabel(f"(F) {labels[6]} (8.6 deg)")
+    sbs[2].set_title(f"(A) {labels[1]} (15.0 deg)", pad=4, weight="normal")
+    sbs[5].set_title(f"(B) {labels[2]} (9.8 deg)", pad=4, weight="normal")
+    sbs[8].set_title(f"(C) {labels[3]} (10.6 deg)", pad=4, weight="normal")
+    sbs[11].set_title(f"(D) {labels[4]} (13.7 deg)", pad=4, weight="normal")
+    sbs[14].set_title(f"(E) {labels[5]} (10.8 deg)", pad=4, weight="normal")
+    sbs[17].set_title(f"(F) {labels[6]} (8.6 deg)", pad=4, weight="normal")
     f0.savefig(FIGURES_DIR / "fieldmap_differences.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
@@ -279,10 +308,13 @@ def head_concatenation(data):
     width = (gs_high_right - gs_low_left - pad) / 3
     gs_low_right = gs_low_left + width
     gs_high_left = gs_low_right + pad
-    gs_low = GridSpec(3, 1, left=gs_low_left, right=gs_low_right, bottom=0.225, top=0.92, wspace=pad2, hspace=0.01)
-    gs_high = GridSpec(3, 2, left=gs_high_left, right=gs_high_right, bottom=0.225, top=0.92, wspace=pad2, hspace=0.01)
+    gs_low = GridSpec(3, 1, left=gs_low_left, right=gs_low_right, bottom=0.15, top=0.9, wspace=pad2, hspace=0.01)
+    gs_high = GridSpec(3, 2, left=gs_high_left, right=gs_high_right, bottom=0.15, top=0.9, wspace=pad2, hspace=0.01)
 
     # plot images
+    f.text(gs_low_left + width / 2, 0.9, "TOPUP (Low Motion)", ha="center", va="center")
+    f.text(gs_high_left + width / 2, 0.9, "MEDIC (High Motion)", ha="center", va="center")
+    f.text(gs_high_right - width / 2, 0.9, "TOPUP (High Motion)", ha="center", va="center")
     # SCAN
     mpl.rcParams["axes.edgecolor"] = "white"
     ax_truth_scan = f.add_subplot(gs_low[0, 0])
@@ -294,10 +326,12 @@ def head_concatenation(data):
     ax_medic_scan.imshow(medic_scan)
     ax_medic_scan.set_xticks([])
     ax_medic_scan.set_yticks([])
+    ax_medic_scan.text(0.5, 0.05, "R = 0.231", ha="center", va="center", transform=ax_medic_scan.transAxes)
     ax_topup_scan = f.add_subplot(gs_high[0, 1])
     ax_topup_scan.imshow(topup_scan)
     ax_topup_scan.set_xticks([])
     ax_topup_scan.set_yticks([])
+    ax_topup_scan.text(0.5, 0.05, "R = 0.180", ha="center", va="center", transform=ax_topup_scan.transAxes)
     # DLPFC
     ax_truth_dlpfc = f.add_subplot(gs_low[1, 0])
     ax_truth_dlpfc.imshow(truth_dlpfc)
@@ -308,31 +342,33 @@ def head_concatenation(data):
     ax_medic_dlpfc.imshow(medic_dlpfc)
     ax_medic_dlpfc.set_xticks([])
     ax_medic_dlpfc.set_yticks([])
+    ax_medic_dlpfc.text(0.5, 0.05, "R = 0.407", ha="center", va="center", transform=ax_medic_dlpfc.transAxes)
     ax_topup_dlpfc = f.add_subplot(gs_high[1, 1])
     ax_topup_dlpfc.imshow(topup_dlpfc)
     ax_topup_dlpfc.set_xticks([])
     ax_topup_dlpfc.set_yticks([])
+    ax_topup_dlpfc.text(0.5, 0.05, "R = 0.175", ha="center", va="center", transform=ax_topup_dlpfc.transAxes)
     # Occipital
     ax_truth_occipital = f.add_subplot(gs_low[2, 0])
     ax_truth_occipital.imshow(truth_occipital)
     ax_truth_occipital.set_xticks([])
     ax_truth_occipital.set_yticks([])
-    ax_truth_occipital.set_xlabel("TOPUP\n(Low Motion)", labelpad=1)
+    # ax_truth_occipital.set_xlabel("TOPUP (Low Motion)", labelpad=0.5)
     ax_truth_occipital.set_ylabel("Occipital")
     ax_medic_occipital = f.add_subplot(gs_high[2, 0])
     ax_medic_occipital.imshow(medic_occipital)
     ax_medic_occipital.set_xticks([])
     ax_medic_occipital.set_yticks([])
-    ax_medic_occipital.set_xlabel("MEDIC\n(High Motion), R = 0.363", labelpad=1)
+    ax_medic_occipital.text(0.5, 0.05, "R = 0.534", ha="center", va="center", transform=ax_medic_occipital.transAxes)
     ax_topup_occipital = f.add_subplot(gs_high[2, 1])
     ax_topup_occipital.imshow(topup_occipital)
     ax_topup_occipital.set_xticks([])
     ax_topup_occipital.set_yticks([])
-    ax_topup_occipital.set_xlabel("TOPUP\n(High Motion), R = 0.322", labelpad=1)
+    ax_topup_occipital.text(0.5, 0.05, "R = 0.383", ha="center", va="center", transform=ax_topup_occipital.transAxes)
     mpl.rcParams["axes.edgecolor"] = "black"
     text_position = gs_low_left + (gs_high_right - gs_low_left) / 2
     f.text(text_position, 0.96, "(B) Surface Comparison", ha="center", va="center")
-
+    # 0.363 vs 0.322 whole brain
     # create axis for colorbar
     cbar_pad = 0.05
     cbar_ax = f.add_subplot(
@@ -349,7 +385,7 @@ def head_concatenation(data):
         aspect=60,
         fraction=1.0,
     )
-    cbar.ax.set_xlabel("Correlation")
+    cbar.ax.set_xlabel("Correlation", labelpad=2)
 
     f.savefig(FIGURES_DIR / "head_position_concat.png", dpi=300)
     current_dir = os.getcwd()
@@ -404,11 +440,12 @@ def group_template_comparison(data):
     axl2.imshow(medic_occipital)
     axl2.set_xticks([])
     axl2.set_yticks([])
-    axl2.set_xlabel("MEDIC (R = 0.361)", labelpad=4)
+    axl2.set_xlabel("MEDIC (R = 0.438)", labelpad=4)
     axl3.imshow(topup_occipital)
     axl3.set_xticks([])
     axl3.set_yticks([])
-    axl3.set_xlabel("TOPUP (R = 0.342)", labelpad=4)
+    axl3.set_xlabel("TOPUP (R = 0.040)", labelpad=4)
+    # 0.361 vs. 0.342
     f.text(0.25, 0.97, "(A) Single Subject Comparison to Group Average", ha="center", va="center")
     mpl.rcParams["axes.edgecolor"] = "black"
     cbar_ax = f.add_subplot(gs[19:, :9])
@@ -428,8 +465,8 @@ def group_template_comparison(data):
 
     # plot group similarities
     ax1 = f.add_subplot(gs[:9, 11:])
-    sns.scatterplot(topup_better_similarities_topup, medic_better_similarities_topup, ax=ax1)
-    sns.scatterplot(topup_better_similarities_medic, medic_better_similarities_medic, ax=ax1)
+    sns.scatterplot(topup_better_similarities_topup, medic_better_similarities_topup, s=12, ax=ax1)
+    sns.scatterplot(topup_better_similarities_medic, medic_better_similarities_medic, s=12, ax=ax1)
     ax1.axline((0, 0), slope=1, color="black", linestyle="--")
     ax1.set_xlabel("TOPUP Mean Similarity (Correlation)", labelpad=4)
     ax1.set_ylabel("MEDIC Mean Similarity (Correlation)", labelpad=4)
@@ -441,8 +478,8 @@ def group_template_comparison(data):
     ax1.set_ylim([vmin, vmax])
     ax1.set_xticks(np.arange(vmin, vmax, 0.05))
     ax1.set_yticks(np.arange(vmin, vmax, 0.05))
-    ax1.text(0.1, 0.9, "MEDIC more similar to Group Average", transform=ax1.transAxes)
-    ax1.text(0.25, 0.1, "TOPUP more similar to Group Average", transform=ax1.transAxes)
+    ax1.text(0.075, 0.95, "MEDIC more similar to Group Average", ha="left", va="center", transform=ax1.transAxes)
+    ax1.text(0.925, 0.05, "TOPUP more similar to Group Average", ha="right", va="center", transform=ax1.transAxes)
     x = np.array([-0.1, 0.7])
     y = x
     y2 = np.ones(x.shape) * 0.6
@@ -578,20 +615,20 @@ def fmap_comparison(data_dir):
 
     # plot images
     ax_WashU_fmap.imshow(washu_example_fmap)
-    ax_WashU_fmap.set_title("(A) WashU", pad=3)
+    ax_WashU_fmap.set_title("(A) WashU", pad=6)
     ax_WashU_fmap.set_xticks([])
     ax_WashU_fmap.set_yticks([])
-    ax_WashU_fmap.set_ylabel("Field Map Difference", labelpad=3)
+    ax_WashU_fmap.set_ylabel("Field Map Difference", labelpad=6)
     ax_WashU_medic.imshow(washu_example_medic)
     ax_WashU_medic.set_xticks([])
     ax_WashU_medic.set_yticks([])
-    ax_WashU_medic.set_ylabel("MEDIC", labelpad=3)
+    ax_WashU_medic.set_ylabel("MEDIC", labelpad=6)
     ax_WashU_topup.imshow(washu_example_topup)
     ax_WashU_topup.set_xticks([])
     ax_WashU_topup.set_yticks([])
-    ax_WashU_topup.set_ylabel("TOPUP", labelpad=3)
+    ax_WashU_topup.set_ylabel("TOPUP", labelpad=6)
     ax_UMinn_fmap.imshow(minn_example_fmap)
-    ax_UMinn_fmap.set_title("(B) UMinn", pad=3)
+    ax_UMinn_fmap.set_title("(B) UMinn", pad=6)
     ax_UMinn_fmap.set_xticks([])
     ax_UMinn_fmap.set_yticks([])
     ax_UMinn_medic.imshow(minn_example_medic)
@@ -601,7 +638,7 @@ def fmap_comparison(data_dir):
     ax_UMinn_topup.set_xticks([])
     ax_UMinn_topup.set_yticks([])
     ax_Penn_fmap.imshow(penn_example_fmap)
-    ax_Penn_fmap.set_title("(C) Penn", pad=3)
+    ax_Penn_fmap.set_title("(C) Penn", pad=6)
     ax_Penn_fmap.set_xticks([])
     ax_Penn_fmap.set_yticks([])
     ax_Penn_medic.imshow(penn_example_medic)
@@ -845,22 +882,37 @@ def head_position_videos(data):
         # return function
         return set_figure_labels
 
-    sns.set_theme(
-        font="Inter",
-        font_scale=1,
-        palette="dark",
-        style="white",
-        rc={
-            "axes.facecolor": "black",
-            "figure.facecolor": "black",
-            "axes.labelcolor": "white",
-            "axes.titlecolor": "white",
-            "text.color": "white",
-            "xtick.color": "white",
-            "ytick.color": "white",
-        },
+    gs0 = GridSpec(1, 1, left=0.05, right=0.1, bottom=0.025, top=0.975)
+    gs1 = GridSpec(
+        1,
+        3,
+        left=0.125,
+        right=0.075,
+        bottom=0.025,
+        top=0.975,
+        hspace=0.025,
+        wspace=0.025,
+        width_ratios=[72, 110, 110],
     )
+    fig = plt.figure(figsize=(10, 6), layout="constrained")
+    axes_list = [fig.add_subplot(gs1[0, i]) for i in range(3)]
 
+    # create subplots
+    cbar_ax = fig.add_subplot(gs0[:, :])
+    cbar_ax.axis("off")
+
+    settings = GLOBAL_SETTINGS.copy()
+    settings["rc"].update({
+        "axes.facecolor": "black",
+        "figure.facecolor": "black",
+        "axes.labelcolor": "white",
+        "axes.titlecolor": "white",
+        "text.color": "white",
+        "xtick.color": "white",
+        "ytick.color": "white",
+    })
+    sns.set_theme(**settings)
+    data_plotter
     for fmap, moco, label in zip(transient_fieldmaps, motion_params, labels):
         render_dynamic_figure(
             str(transients_out / f"{label}.mp4"),
@@ -870,7 +922,9 @@ def head_position_videos(data):
             colorbar_pad=0.35,
             figure_fx=set_moco_label(moco),
             text_color="white",
-            figsize=(8, 9),
+            figure=fig,
+            axes_list=axes_list,
+            cbar_ax=cbar_ax,
         )
 
 

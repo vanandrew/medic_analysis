@@ -249,7 +249,7 @@ def data_plotter(
         )
         cbar.ax.yaxis.set_ticks_position("left")
         cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, color=text_color, fontsize=fontsize, rotation=90)
-        cbar.ax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
+        cbar.ax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
         # for colorbar alt range
         if colorbar_alt_range:
             alt_vmin, alt_vmax = colorbar_alt_range_fx(vmin[colorbar_source_idx[0]], vmax[colorbar_source_idx[0]])
@@ -276,7 +276,7 @@ def data_plotter(
         cbar.ax.set_ylabel(
             colorbar2_label, labelpad=colorbar2_labelpad, color=text_color, fontsize=fontsize, rotation=90
         )
-        cbar.ax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
+        cbar.ax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
         # for colorbar alt range
         if colorbar2_alt_range:
             alt_vmin, alt_vmax = colorbar2_alt_range_fx(vmin[colorbar2_source_idx[0]], vmax[colorbar2_source_idx[0]])
@@ -286,7 +286,7 @@ def data_plotter(
             cax.set_ylabel(
                 colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, color=text_color, fontsize=fontsize, rotation=90
             )
-            cax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
+            cax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
             cbar.ax.yaxis.set_ticks_position("right")  # reset the ticks position on the non-alt bar
 
     # return figure
