@@ -6,6 +6,7 @@ from pathlib import Path
 from PIL import Image
 import numpy as np
 import nibabel as nib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import pandas as pd
@@ -20,12 +21,25 @@ from nilearn.plotting.cm import _cmap_d as nilearn_cmaps
 
 
 # Set global seaborn figure settings
-sns.set(
+sns.set_theme(
     font="Inter",
-    font_scale=1.4,
+    font_scale=1,
     palette="pastel",
     style="white",
+    rc={
+        "figure.dpi": 100,
+        "font.size": 8,
+        "axes.titlesize": 8,
+        "axes.titlepad": 0,
+        "axes.labelsize": 8,
+        "axes.labelpad": 0,
+        "axes.linewidth": 0.5,
+        "legend.title_fontsize": 8,
+        "ytick.labelsize": 7,
+        "xtick.labelsize": 7,
+    },
 )
+LOWER_FONT_SIZE = 5
 
 
 # Default paths for data
@@ -59,8 +73,11 @@ def plot_box_plot(data, variable, label, ax):
         .rename(columns={f"{variable}_medic": "MEDIC", f"{variable}_topup": "TOPUP"})
         .melt(var_name=label)
     )
-    sb = sns.boxplot(data=subdata, x="value", y=label, order=["MEDIC", "TOPUP"], ax=ax)
+    sb = sns.boxplot(data=subdata, x="value", y=label, order=["MEDIC", "TOPUP"], ax=ax, fliersize=1, linewidth=0.5)
     sb.set_xlabel("")
+    sb.set_ylabel(label, labelpad=2)
+    ax.tick_params(axis="x", pad=-3)
+    ax.tick_params(axis="y", pad=-3)
     return sb
 
 
@@ -108,19 +125,19 @@ def head_position_fieldmap(data):
     vlims = (-50, 50)
 
     # plot static field maps
-    f0 = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
+    f0 = plt.figure(figsize=(180 * MM_TO_INCHES, 90 * MM_TO_INCHES), layout="constrained")
 
     # create a grid spec for the figure
-    gs0 = GridSpec(3, 1, left=0.025, right=0.1, bottom=0.05, top=0.95)
+    gs0 = GridSpec(1, 1, left=0.07, right=0.125, bottom=0.025, top=0.975)
     gs1 = GridSpec(
-        3, 3, left=0.1, right=0.5, bottom=0.025, top=0.975, hspace=0.1, wspace=0.05, width_ratios=[1, 1.5, 1.5]
+        3, 3, left=0.15, right=0.55, bottom=0.05, top=1, hspace=0.025, wspace=0.05, width_ratios=[1, 1.5, 1.5]
     )
     gs2 = GridSpec(
-        3, 3, left=0.55, right=0.95, bottom=0.025, top=0.975, hspace=0.1, wspace=0.05, width_ratios=[1, 1.5, 1.5]
+        3, 3, left=0.575, right=0.975, bottom=0.05, top=1, hspace=0.025, wspace=0.05, width_ratios=[1, 1.5, 1.5]
     )
 
     # create subplots
-    cbar_ax = f0.add_subplot(gs0[:, 0])
+    cbar_ax = f0.add_subplot(gs0[:, :])
     cbar_ax.axis("off")
     axes_list = []
     for i in range(3):
@@ -141,7 +158,7 @@ def head_position_fieldmap(data):
         ],
         figure=f0,
         colorbar=True,
-        colorbar_aspect=30,
+        colorbar_aspect=60,
         colorbar_pad=0,
         colorbar_labelpad=0,
         colorbar_alt_range=True,
@@ -159,7 +176,7 @@ def head_position_fieldmap(data):
     sbs[11].set_xlabel(f"(D) {labels[4]} (13.7 deg)")
     sbs[14].set_xlabel(f"(E) {labels[5]} (10.8 deg)")
     sbs[17].set_xlabel(f"(F) {labels[6]} (8.6 deg)")
-    f0.savefig(FIGURES_DIR / "fieldmap_differences.png", dpi=100)
+    f0.savefig(FIGURES_DIR / "fieldmap_differences.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure1.png").unlink(missing_ok=True)
@@ -201,11 +218,11 @@ def head_concatenation(data):
     truth_occipital = Image.open(truth_occipital_path)
 
     # create a figure
-    f = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
+    f = plt.figure(figsize=(180 * MM_TO_INCHES, 90 * MM_TO_INCHES), layout="constrained")
 
     # grid spec for head motion images
     gsm = GridSpec(
-        7, 3, left=0.025, right=0.3, bottom=0.08, top=0.95, wspace=0.01, hspace=0.01, width_ratios=[1, 1.5, 1.5]
+        7, 3, left=0.025, right=0.3, bottom=0.05, top=0.92, wspace=0.01, hspace=0.01, width_ratios=[1, 1.5, 1.5]
     )
 
     # plot movement data
@@ -235,35 +252,29 @@ def head_concatenation(data):
         axes_list=axes_list,
     )
     sbs = axes_list
-    sbs[0].set_ylabel("Frame 50")
-    sbs[3].set_ylabel("Frame 150")
-    sbs[6].set_ylabel("Frame 250")
-    sbs[9].set_ylabel("Frame 350")
-    sbs[12].set_ylabel("Frame 450")
-    sbs[15].set_ylabel("Frame 550")
-    sbs[18].set_ylabel("Frame 650")
-    f.text(0.1375, 0.04, "(A) High Motion Data", ha="center", va="center")
+    sbs[0].set_ylabel("Frame 50", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    sbs[3].set_ylabel("Frame 150", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    sbs[6].set_ylabel("Frame 250", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    sbs[9].set_ylabel("Frame 350", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    sbs[12].set_ylabel("Frame 450", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    sbs[15].set_ylabel("Frame 550", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    sbs[18].set_ylabel("Frame 650", fontsize=LOWER_FONT_SIZE, labelpad=-4)
+    f.text(0.1375, 0.96, "(A) High Motion Data", ha="center", va="center")
 
     # create gridspec for surface data
     gs_low_left = 0.325
-    pad = 0.05
-    width = 0.185
-    colorbar_pad = 0.015
+    pad = 0.04
+    pad2 = 0.07
+    gs_high_right = 0.99
+    width = (gs_high_right - gs_low_left - pad) / 3
     gs_low_right = gs_low_left + width
     gs_high_left = gs_low_right + pad
-    gs_high_right = gs_high_left + width * 2
-    colorbar_left = gs_high_right + colorbar_pad
-    gs_low = GridSpec(3, 1, left=gs_low_left, right=gs_low_right, bottom=0.08, top=0.95, wspace=0.01, hspace=0.01)
-    gs_high = GridSpec(3, 2, left=gs_high_left, right=gs_high_right, bottom=0.08, top=0.95, wspace=0.01, hspace=0.01)
+    gs_low = GridSpec(3, 1, left=gs_low_left, right=gs_low_right, bottom=0.225, top=0.92, wspace=pad2, hspace=0.01)
+    gs_high = GridSpec(3, 2, left=gs_high_left, right=gs_high_right, bottom=0.225, top=0.92, wspace=pad2, hspace=0.01)
 
     # plot images
     # SCAN
-    sns.set(
-        font="Inter",
-        font_scale=1.4,
-        palette="pastel",
-        style="dark",
-    )
+    mpl.rcParams["axes.edgecolor"] = "white"
     ax_truth_scan = f.add_subplot(gs_low[0, 0])
     ax_truth_scan.imshow(truth_scan)
     ax_truth_scan.set_xticks([])
@@ -296,43 +307,41 @@ def head_concatenation(data):
     ax_truth_occipital.imshow(truth_occipital)
     ax_truth_occipital.set_xticks([])
     ax_truth_occipital.set_yticks([])
-    ax_truth_occipital.set_xlabel("TOPUP (Low Motion)")
+    ax_truth_occipital.set_xlabel("TOPUP\n(Low Motion)", labelpad=1)
     ax_truth_occipital.set_ylabel("Occipital")
     ax_medic_occipital = f.add_subplot(gs_high[2, 0])
     ax_medic_occipital.imshow(medic_occipital)
     ax_medic_occipital.set_xticks([])
     ax_medic_occipital.set_yticks([])
-    ax_medic_occipital.set_xlabel("MEDIC (High Motion), R = 0.363")
+    ax_medic_occipital.set_xlabel("MEDIC\n(High Motion), R = 0.363", labelpad=1)
     ax_topup_occipital = f.add_subplot(gs_high[2, 1])
     ax_topup_occipital.imshow(topup_occipital)
     ax_topup_occipital.set_xticks([])
     ax_topup_occipital.set_yticks([])
-    ax_topup_occipital.set_xlabel("TOPUP (High Motion), R = 0.322")
-    sns.set(
-        font="Inter",
-        font_scale=1.4,
-        palette="pastel",
-        style="white",
-    )
+    ax_topup_occipital.set_xlabel("TOPUP\n(High Motion), R = 0.322", labelpad=1)
+    mpl.rcParams["axes.edgecolor"] = "black"
     text_position = gs_low_left + (gs_high_right - gs_low_left) / 2
-    f.text(text_position, 0.04, "(B) Surface Comparison", ha="center", va="center")
+    f.text(text_position, 0.96, "(B) Surface Comparison", ha="center", va="center")
 
     # create axis for colorbar
-    cbar_ax = f.add_subplot(GridSpec(1, 1, left=colorbar_left, right=1, bottom=0.1, top=0.95)[0, 0])
+    cbar_pad = 0.05
+    cbar_ax = f.add_subplot(
+        GridSpec(1, 1, left=gs_low_left + cbar_pad, right=gs_high_right - cbar_pad, bottom=0.025, top=0.125)[0, 0]
+    )
     pl = cbar_ax.imshow(np.array([[-0.6, 0.6], [0.6, -0.6]]), vmin=-0.6, vmax=0.6, cmap=nilearn_cmaps["roy_big_bl"])
     cbar_ax.set_visible(False)
     cbar = f.colorbar(
         pl,
         ax=cbar_ax,
-        location="right",
-        orientation="vertical",
+        location="bottom",
+        orientation="horizontal",
         ticks=[-0.6, -0.3, 0, 0.3, 0.6],
-        aspect=40,
+        aspect=60,
         fraction=1.0,
     )
-    cbar.ax.set_ylabel("Correlation")
+    cbar.ax.set_xlabel("Correlation")
 
-    f.savefig(FIGURES_DIR / "head_position_concat.png", dpi=100)
+    f.savefig(FIGURES_DIR / "head_position_concat.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure2.png").unlink(missing_ok=True)
@@ -361,18 +370,61 @@ def group_template_comparison(data):
     medic_better_similarities_topup = medic_similarities[topup_better]
     topup_better_similarities_topup = topup_similarities[topup_better]
 
+    # make figure
+    f = plt.figure(figsize=(180 * MM_TO_INCHES, 180 * MM_TO_INCHES), layout="constrained")
+
+    # create grid spec
+    gs = GridSpec(20, 20, left=0.025, right=0.975, bottom=0.03, top=0.93, wspace=0.1, hspace=0.1)
+
+    # plot surfaces
+    group_template_abcd_path = DATA_DIR / "group_abcd_template_surface.png"
+    group_template_abcd = Image.open(group_template_abcd_path)
+    medic_occipital_path = DATA_DIR / "medic_occipital_20008.png"
+    medic_occipital = Image.open(medic_occipital_path)
+    topup_occipital_path = DATA_DIR / "topup_occipital_20008.png"
+    topup_occipital = Image.open(topup_occipital_path)
+    mpl.rcParams["axes.edgecolor"] = "white"
+    axl1 = f.add_subplot(gs[:5, :9])
+    axl2 = f.add_subplot(gs[7:12, :9])
+    axl3 = f.add_subplot(gs[13:18, :9])
+    axl1.imshow(group_template_abcd)
+    axl1.set_xticks([])
+    axl1.set_yticks([])
+    axl1.set_xlabel("ABCD Group Average (N = 3928)", labelpad=4)
+    axl2.imshow(medic_occipital)
+    axl2.set_xticks([])
+    axl2.set_yticks([])
+    axl2.set_xlabel("MEDIC (R = 0.361)", labelpad=4)
+    axl3.imshow(topup_occipital)
+    axl3.set_xticks([])
+    axl3.set_yticks([])
+    axl3.set_xlabel("TOPUP (R = 0.342)", labelpad=4)
+    f.text(0.25, 0.97, "(A) Single Subject Comparison to Group Average", ha="center", va="center")
+    mpl.rcParams["axes.edgecolor"] = "black"
+    cbar_ax = f.add_subplot(gs[19:, :9])
+    pl = cbar_ax.imshow(np.array([[-0.5, 0.5], [0.5, -0.5]]), vmin=-0.5, vmax=0.5, cmap=nilearn_cmaps["roy_big_bl"])
+    cbar_ax.set_visible(False)
+    cbar = f.colorbar(
+        pl,
+        ax=cbar_ax,
+        location="bottom",
+        orientation="horizontal",
+        ticks=[-0.5, -0.25, 0, 0.25, 0.5],
+        aspect=40,
+        fraction=1.0,
+    )
+    # create axis for colorbar
+    cbar.ax.set_xlabel("Correlation", labelpad=2)
+
     # plot group similarities
-    f = plt.figure(figsize=(90 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
-    subfigs = f.subfigures(1, 2, wspace=0.1, hspace=0.1, width_ratios=[1, 1])
-    gs = GridSpec(20, 10, left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.05)
-    ax1 = subfigs[1].add_subplot(gs[:10, :])
+    ax1 = f.add_subplot(gs[:9, 11:])
     sns.scatterplot(topup_better_similarities_topup, medic_better_similarities_topup, ax=ax1)
     sns.scatterplot(topup_better_similarities_medic, medic_better_similarities_medic, ax=ax1)
     ax1.axline((0, 0), slope=1, color="black", linestyle="--")
-    ax1.set_xlabel("TOPUP Mean Similarity (Correlation)")
-    ax1.set_ylabel("MEDIC Mean Similarity (Correlation)")
+    ax1.set_xlabel("TOPUP Mean Similarity (Correlation)", labelpad=4)
+    ax1.set_ylabel("MEDIC Mean Similarity (Correlation)", labelpad=4)
     ax1.set_aspect("equal")
-    ax1.set_title("(B) Mean Similarity to ABCD Group Average", pad=20)
+    f.text(0.75, 0.97, "(B) Group Template Comparison", ha="center", va="center")
     vmax = 0.55
     vmin = 0.3
     ax1.set_xlim([vmin, vmax])
@@ -391,71 +443,31 @@ def group_template_comparison(data):
     # plot t-statistic surface
     tstat_surface_path = DATA_DIR / "group_tstat_surface.png"
     tstat_surface = Image.open(tstat_surface_path)
-    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="dark")
-    ax2 = subfigs[1].add_subplot(gs[11:, :])
+    mpl.rcParams["axes.edgecolor"] = "white"
+    ax2 = f.add_subplot(gs[13:18, 11:])
     ax2.imshow(tstat_surface)
     ax2.set_xticks([])
     ax2.set_yticks([])
-    ax2.set_title("(C) Vertex-wise similarity t-statistic map", pad=20)
-    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="white")
-    cbar_ax = subfigs[1].add_subplot(gs[19:, :])
+    f.text(0.75, 0.375, "(C) Vertex-wise Similarity", ha="center", va="center")
+    mpl.rcParams["axes.edgecolor"] = "black"
+    cbar_ax = f.add_subplot(gs[19:, 11:])
     spectral_map = plt.cm.get_cmap("Spectral")
     spectral_rmap = spectral_map.reversed()
     pl = cbar_ax.imshow(np.array([[-6, 6], [6, -6]]), vmin=-6, vmax=6, cmap=spectral_rmap)
     cbar_ax.set_visible(False)
-    cbar = subfigs[1].colorbar(
+    cbar = f.colorbar(
         pl,
         ax=cbar_ax,
         location="bottom",
         orientation="horizontal",
-        ticks=[-6, 0, 6],
+        ticks=[-6, -3, 0, 3, 6],
         aspect=40,
         fraction=1.0,
     )
     # create axis for colorbar
-    cbar.ax.set_xlabel("t-statistic (MEDIC > TOPUP)")
+    cbar.ax.set_xlabel("t-statistic (MEDIC > TOPUP)", labelpad=2)
 
-    # plot surfaces
-    group_template_abcd_path = DATA_DIR / "group_abcd_template_surface.png"
-    group_template_abcd = Image.open(group_template_abcd_path)
-    medic_occipital_path = DATA_DIR / "medic_occipital_20008.png"
-    medic_occipital = Image.open(medic_occipital_path)
-    topup_occipital_path = DATA_DIR / "topup_occipital_20008.png"
-    topup_occipital = Image.open(topup_occipital_path)
-    gs = GridSpec(20, 10, left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.05)
-    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="dark")
-    axl1 = subfigs[0].add_subplot(gs[:5, :])
-    axl2 = subfigs[0].add_subplot(gs[7:12, :])
-    axl3 = subfigs[0].add_subplot(gs[13:18, :])
-    axl1.imshow(group_template_abcd)
-    axl1.set_xticks([])
-    axl1.set_yticks([])
-    axl1.set_xlabel("ABCD Group Average (N = 3928)")
-    axl1.set_title("(A) Single Subject Comparison to Group Average", pad=20)
-    axl2.imshow(medic_occipital)
-    axl2.set_xticks([])
-    axl2.set_yticks([])
-    axl2.set_xlabel("MEDIC (R = 0.361)")
-    axl3.imshow(topup_occipital)
-    axl3.set_xticks([])
-    axl3.set_yticks([])
-    axl3.set_xlabel("TOPUP (R = 0.342)")
-    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="white")
-    cbar_ax = subfigs[0].add_subplot(gs[19:, :])
-    pl = cbar_ax.imshow(np.array([[-0.5, 0.5], [0.5, -0.5]]), vmin=-0.5, vmax=0.5, cmap=nilearn_cmaps["roy_big_bl"])
-    cbar_ax.set_visible(False)
-    cbar = subfigs[0].colorbar(
-        pl,
-        ax=cbar_ax,
-        location="bottom",
-        orientation="horizontal",
-        ticks=[-0.5, 0, 0.5],
-        aspect=40,
-        fraction=1.0,
-    )
-    # create axis for colorbar
-    cbar.ax.set_xlabel("Correlation")
-    f.savefig(FIGURES_DIR / "group_template_compare.png", dpi=100)
+    f.savefig(FIGURES_DIR / "group_template_compare.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure3.png").unlink(missing_ok=True)
@@ -489,7 +501,7 @@ def fmap_comparison(data_dir):
     washu_example_fmap = Image.open(washu_example_fmap_path)
 
     # create figure
-    width_mult = 14
+    width_mult = 180 * MM_TO_INCHES
     base_width = 1
     base_height = 0.828
     label_width = 0.04
@@ -497,7 +509,7 @@ def fmap_comparison(data_dir):
     colorbar_width = 0.075
     colorbar_gap = 0.05
     colorbar_pad = 0.025
-    cbar_labelpad = -50
+    cbar_labelpad = -30
     width = base_width * width_mult
     height = base_height * width_mult
     full_width = width / (1 - (label_width + colorbar_gap + colorbar_width))
@@ -509,27 +521,27 @@ def fmap_comparison(data_dir):
         3,
         left=label_width,
         right=(1 - (colorbar_width + colorbar_gap)),
-        bottom=label_height,
-        top=1,
+        bottom=0,
+        top=1 - label_height,
         wspace=0,
         hspace=0,
     )
-    ax_UMinn_fmap = f.add_subplot(gs[0, 0])
-    ax_UMinn_medic = f.add_subplot(gs[1, 0])
-    ax_UMinn_topup = f.add_subplot(gs[2, 0])
-    ax_Penn_fmap = f.add_subplot(gs[0, 1])
-    ax_Penn_medic = f.add_subplot(gs[1, 1])
-    ax_Penn_topup = f.add_subplot(gs[2, 1])
-    ax_WashU_fmap = f.add_subplot(gs[0, 2])
-    ax_WashU_medic = f.add_subplot(gs[1, 2])
-    ax_WashU_topup = f.add_subplot(gs[2, 2])
+    ax_WashU_fmap = f.add_subplot(gs[0, 0])
+    ax_WashU_medic = f.add_subplot(gs[1, 0])
+    ax_WashU_topup = f.add_subplot(gs[2, 0])
+    ax_UMinn_fmap = f.add_subplot(gs[0, 1])
+    ax_UMinn_medic = f.add_subplot(gs[1, 1])
+    ax_UMinn_topup = f.add_subplot(gs[2, 1])
+    ax_Penn_fmap = f.add_subplot(gs[0, 2])
+    ax_Penn_medic = f.add_subplot(gs[1, 2])
+    ax_Penn_topup = f.add_subplot(gs[2, 2])
     cgs = GridSpec(
         1,
         1,
         left=1 - colorbar_width,
         right=1,
-        bottom=label_height + colorbar_pad,
-        top=1 - colorbar_pad,
+        bottom=colorbar_pad,
+        top=1 - colorbar_pad - label_height,
         wspace=colorbar_gap,
         hspace=0,
     )
@@ -555,20 +567,31 @@ def fmap_comparison(data_dir):
     cbar.ax.yaxis.set_ticks_position("right")
 
     # plot images
+    ax_WashU_fmap.imshow(washu_example_fmap)
+    ax_WashU_fmap.set_title("(A) WashU", pad=3)
+    ax_WashU_fmap.set_xticks([])
+    ax_WashU_fmap.set_yticks([])
+    ax_WashU_fmap.set_ylabel("Field Map Difference", labelpad=3)
+    ax_WashU_medic.imshow(washu_example_medic)
+    ax_WashU_medic.set_xticks([])
+    ax_WashU_medic.set_yticks([])
+    ax_WashU_medic.set_ylabel("MEDIC", labelpad=3)
+    ax_WashU_topup.imshow(washu_example_topup)
+    ax_WashU_topup.set_xticks([])
+    ax_WashU_topup.set_yticks([])
+    ax_WashU_topup.set_ylabel("TOPUP", labelpad=3)
     ax_UMinn_fmap.imshow(minn_example_fmap)
+    ax_UMinn_fmap.set_title("(B) UMinn", pad=3)
     ax_UMinn_fmap.set_xticks([])
     ax_UMinn_fmap.set_yticks([])
-    ax_UMinn_fmap.set_ylabel("Field Map Difference")
     ax_UMinn_medic.imshow(minn_example_medic)
     ax_UMinn_medic.set_xticks([])
     ax_UMinn_medic.set_yticks([])
-    ax_UMinn_medic.set_ylabel("MEDIC")
     ax_UMinn_topup.imshow(minn_example_topup)
     ax_UMinn_topup.set_xticks([])
     ax_UMinn_topup.set_yticks([])
-    ax_UMinn_topup.set_ylabel("TOPUP")
-    ax_UMinn_topup.set_xlabel("(A) UMinn")
     ax_Penn_fmap.imshow(penn_example_fmap)
+    ax_Penn_fmap.set_title("(C) Penn", pad=3)
     ax_Penn_fmap.set_xticks([])
     ax_Penn_fmap.set_yticks([])
     ax_Penn_medic.imshow(penn_example_medic)
@@ -577,20 +600,9 @@ def fmap_comparison(data_dir):
     ax_Penn_topup.imshow(penn_example_topup)
     ax_Penn_topup.set_xticks([])
     ax_Penn_topup.set_yticks([])
-    ax_Penn_topup.set_xlabel("(B) Penn")
-    ax_WashU_fmap.imshow(washu_example_fmap)
-    ax_WashU_fmap.set_xticks([])
-    ax_WashU_fmap.set_yticks([])
-    ax_WashU_medic.imshow(washu_example_medic)
-    ax_WashU_medic.set_xticks([])
-    ax_WashU_medic.set_yticks([])
-    ax_WashU_topup.imshow(washu_example_topup)
-    ax_WashU_topup.set_xticks([])
-    ax_WashU_topup.set_yticks([])
-    ax_WashU_topup.set_xlabel("(C) WashU")
 
     # save figure
-    f.savefig(FIGURES_DIR / "fieldmap_comparison.png", dpi=100)
+    f.savefig(FIGURES_DIR / "fieldmap_comparison.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure4.png").unlink(missing_ok=True)
@@ -603,27 +615,31 @@ def spotlight_comparison(data):
     # load t1 and t2 t stat maps
     t1_tstat = nib.load(Path(data) / "local_corr_t1_tstat.nii.gz").get_fdata().squeeze()
     t2_tstat = nib.load(Path(data) / "local_corr_t2_tstat.nii.gz").get_fdata().squeeze()
-    t1_atlas_exemplar = nib.load(
-        AA_DATA_DIR / "sub-20008" / "T1" / "atlas" / "sub-20008_T1w_debias_avg_on_MNI152_T1_2mm.nii.gz"
-    ).get_fdata().squeeze()
-    t2_atlas_exemplar = nib.load(
-        AA_DATA_DIR / "sub-20008" / "T1" / "atlas" / "sub-20008_T2w_debias_avg_on_MNI152_T1_2mm.nii.gz"
-    ).get_fdata().squeeze()
-    atlas = nib.load("/data/petsun43/data1/atlas/MNI152/MNI152_T1_2mm.nii").get_fdata().squeeze()
+    t1_atlas_exemplar = (
+        nib.load(AA_DATA_DIR / "sub-20008" / "T1" / "atlas" / "sub-20008_T1w_debias_avg_on_MNI152_T1_2mm.nii.gz")
+        .get_fdata()
+        .squeeze()
+    )
+    t2_atlas_exemplar = (
+        nib.load(AA_DATA_DIR / "sub-20008" / "T1" / "atlas" / "sub-20008_T2w_debias_avg_on_MNI152_T1_2mm.nii.gz")
+        .get_fdata()
+        .squeeze()
+    )
 
     # choose slices to iterate over
     slices = np.linspace(16, t1_tstat.shape[2] - 20, 9).astype(int)[::-1]
 
     # create figure
-    f = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
+    f = plt.figure(figsize=(180 * MM_TO_INCHES, 90 * MM_TO_INCHES), layout="constrained")
 
     # create gridspec
-    gs = GridSpec(3, 3, left=0.05, right=0.95, bottom=0.03, top=0.97, wspace=0.03, hspace=0.03)
+    gs = GridSpec(3, 3, left=0.025, right=0.975, bottom=0.025, top=0.95, wspace=0.03, hspace=0.03)
 
     # create subfigures
     subfigs = f.subfigures(1, 3, width_ratios=[1, 5, 5], wspace=0.03)
 
-    cbar_ax = subfigs[0].add_subplot(1, 1, 1)
+    cgs = GridSpec(1, 1, left=0.025, right=0.975, bottom=0.025, top=0.95, wspace=0.03, hspace=0.03)
+    cbar_ax = subfigs[0].add_subplot(cgs[:, :])
     cbar_ax.axis("off")
 
     # create axes for each subfigure
@@ -650,8 +666,8 @@ def spotlight_comparison(data):
         ax2.imshow(t2_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
         ax2.set_xticks([])
         ax2.set_yticks([])
-    axes_list1[7].set_xlabel("(A) T1w $R^2$ Spotlight")
-    axes_list2[7].set_xlabel("(B) T2w $R^2$ Spotlight")
+    axes_list1[1].set_title("(A) T1w $R^2$ Spotlight", pad=4)
+    axes_list2[1].set_title("(B) T2w $R^2$ Spotlight", pad=4)
     # create axis for colorbar
     cbar = subfigs[0].colorbar(
         source_plot,
@@ -662,9 +678,9 @@ def spotlight_comparison(data):
         pad=-0.5,
         fraction=1.0,
     )
-    cbar.ax.set_ylabel("t-statistic (MEDIC > TOPUP)", labelpad=0.25)
+    cbar.ax.set_ylabel("t-statistic (MEDIC > TOPUP)", labelpad=-1)
 
-    f.savefig(FIGURES_DIR / "spotlight_comparison.png", dpi=100)
+    f.savefig(FIGURES_DIR / "spotlight_comparison.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure5.png").unlink(missing_ok=True)
@@ -678,9 +694,12 @@ def alignment_metrics(data):
     data = pd.read_csv(data)
 
     # create figures
-    fig = plt.figure(figsize=(180 * MM_TO_INCHES * 3, 90 * MM_TO_INCHES * 3), layout="constrained")
-    subfigs = fig.subfigures(1, 2, width_ratios=[2, 1], wspace=0.1)
-    subfigs2 = subfigs[0].subfigures(2, 1, hspace=0.1, height_ratios=[3, 1])
+    mpl.rcParams["axes.labelsize"] = 6
+    mpl.rcParams["xtick.labelsize"] = 6
+    mpl.rcParams["ytick.labelsize"] = 6
+    fig = plt.figure(figsize=(180 * MM_TO_INCHES, 90 * MM_TO_INCHES), layout="constrained")
+    subfigs = fig.subfigures(1, 2, width_ratios=[2, 1], wspace=0.025)
+    subfigs2 = subfigs[0].subfigures(2, 1, hspace=0.05, height_ratios=[3, 1])
     fig_global = subfigs2[0]
     fig_global.suptitle("(A) Global Metrics")
     axes_global = fig_global.subplots(3, 2)
@@ -692,46 +711,55 @@ def alignment_metrics(data):
     axes_roc = fig_roc.subplots(4, 1)
 
     # plot global metrics
-    plot_box_plot(data, "corr_t1", "T1w Correlation$^2$", axes_global[0][0])
-    plot_box_plot(data, "corr_t2", "T2w Correlation$^2$", axes_global[0][1])
-    plot_box_plot(data, "grad_corr_t1", "T1w Grad. Correlation", axes_global[1][0])
-    plot_box_plot(data, "grad_corr_t2", "T2w Grad. Correlation", axes_global[1][1])
+    plot_box_plot(data, "corr_t1", "T1w\nCorrelation$^2$", axes_global[0][0])
+    plot_box_plot(data, "corr_t2", "T2w\nCorrelation$^2$", axes_global[0][1])
+    plot_box_plot(data, "grad_corr_t1", "T1wGrad.\nCorrelation", axes_global[1][0])
+    plot_box_plot(data, "grad_corr_t2", "T2w Grad.\nCorrelation", axes_global[1][1])
     plot_box_plot(data, "nmi_t1", "T1w NMI", axes_global[2][0])
     plot_box_plot(data, "nmi_t2", "T2w NMI", axes_global[2][1])
 
     # plot local metrics
-    plot_box_plot(data, "local_corr_mean_t1", "T1w $R^2$ Spotlight", axes_local[0])
-    plot_box_plot(data, "local_corr_mean_t2", "T2w $R^2$ Spotlight", axes_local[1])
+    plot_box_plot(data, "local_corr_mean_t1", "T1w $R^2$\nSpotlight", axes_local[0])
+    plot_box_plot(data, "local_corr_mean_t2", "T2w $R^2$\nSpotlight", axes_local[1])
 
     # plot ROC metrics
-    plot_box_plot(data, "roc_gw", "Gray/White Matter AUC", axes_roc[0])
-    plot_box_plot(data, "roc_ie", "Brain/Exterior AUC", axes_roc[1])
-    plot_box_plot(data, "roc_vw", "Ventricles/White Matter AUC", axes_roc[2])
-    plot_box_plot(data, "roc_cb_ie", "Cerebellum/Exterior AUC", axes_roc[3])
+    plot_box_plot(data, "roc_gw", "Gray/White\nMatter AUC", axes_roc[0])
+    plot_box_plot(data, "roc_ie", "Brain/Exterior\nAUC", axes_roc[1])
+    plot_box_plot(data, "roc_vw", "Ventricles/White\nMatter AUC", axes_roc[2])
+    plot_box_plot(data, "roc_cb_ie", "Cerebellum/Exterior\nAUC", axes_roc[3])
 
     # save figure
-    fig.savefig(FIGURES_DIR / "alignment_metrics.png", dpi=100)
+    fig.savefig(FIGURES_DIR / "alignment_metrics.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure6.png").unlink(missing_ok=True)
     Path("figure6.png").symlink_to("alignment_metrics.png")
     os.chdir(current_dir)
+    mpl.rcParams["axes.labelsize"] = 8
+    mpl.rcParams["xtick.labelsize"] = 7
+    mpl.rcParams["ytick.labelsize"] = 7
 
 
 # figure 7
 def tsnr_comparision(data):
     # load tsnr
     tsnr_table = pd.read_csv(data)
-    f = plt.figure(figsize=(90 * MM_TO_INCHES * 3, 45 * MM_TO_INCHES * 3), layout="constrained")
+    mpl.rcParams["axes.labelsize"] = 6
+    mpl.rcParams["xtick.labelsize"] = 6
+    mpl.rcParams["ytick.labelsize"] = 6
+    f = plt.figure(figsize=(90 * MM_TO_INCHES, 45 * MM_TO_INCHES), layout="constrained")
     ax = f.add_subplot(1, 1, 1)
     plot_box_plot(tsnr_table, "mean_tsnr_masked", "tSNR", ax)
     ax.set_xlim([0, 160])
-    f.savefig(FIGURES_DIR / "tsnr.png", dpi=100)
+    f.savefig(FIGURES_DIR / "tsnr.png", dpi=300)
     current_dir = os.getcwd()
     os.chdir(FIGURES_DIR)
     Path("figure7.png").unlink(missing_ok=True)
     Path("figure7.png").symlink_to("tsnr.png")
     os.chdir(current_dir)
+    mpl.rcParams["axes.labelsize"] = 8
+    mpl.rcParams["xtick.labelsize"] = 7
+    mpl.rcParams["ytick.labelsize"] = 7
 
 
 # figure 10
@@ -807,9 +835,9 @@ def head_position_videos(data):
         # return function
         return set_figure_labels
 
-    sns.set(
+    sns.set_theme(
         font="Inter",
-        font_scale=1.4,
+        font_scale=1,
         palette="dark",
         style="white",
         rc={

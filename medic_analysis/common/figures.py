@@ -3,6 +3,7 @@ import warnings
 import logging
 from tempfile import TemporaryDirectory
 from memori.pathman import PathManager as Path
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure, SubFigure
@@ -15,22 +16,6 @@ from memori.logging import run_process
 
 # plot settings
 warnings.filterwarnings("ignore")
-sns.set(
-    font="Lato",
-    font_scale=1,
-    palette="pastel",
-    style="white",
-    # style="dark",
-    # rc={
-    #     "axes.facecolor": "black",
-    #     "figure.facecolor": "black",
-    #     "axes.labelcolor": "white",
-    #     "axes.titlecolor": "white",
-    #     "text.color": "white",
-    #     "xtick.color": "white",
-    #     "ytick.color": "white",
-    # },
-)
 
 # figure output directory
 FIGURE_OUT = Path("/home/usr/vana/GMT2/Andrew/medic_analysis/figures")
@@ -194,7 +179,7 @@ def data_plotter(
     figure: Union[Figure, SubFigure, None] = None,
     frame_num: int = 0,
     text_color: str = "black",
-    fontsize: int = 12,
+    fontsize: int = 8,
     grid_size: Optional[Tuple[int, int]] = None,
     cbar_ax: Optional[Axes] = None,
     cbar2_ax: Optional[Axes] = None,
@@ -273,7 +258,7 @@ def data_plotter(
             cax.set_ylabel(
                 colorbar_alt_label, labelpad=colorbar_alt_labelpad, color=text_color, fontsize=fontsize, rotation=90
             )
-            cax.tick_params(color=text_color, labelsize=fontsize, labelcolor=text_color)
+            cax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
 
     # if colorbar2 is set, draw it
     if colorbar2:
