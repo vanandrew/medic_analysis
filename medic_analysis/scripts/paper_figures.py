@@ -68,12 +68,22 @@ MINN_DATA_DIR2 = Path("/data/nil-bluearc/GMT/Laumann/Pilot_ME_res/BIO10001/bids/
 
 
 def plot_box_plot(data, variable, label, ax):
+    p = sns.color_palette("pastel")
     subdata = (
         data[[f"{variable}_medic", f"{variable}_topup"]]
         .rename(columns={f"{variable}_medic": "MEDIC", f"{variable}_topup": "TOPUP"})
         .melt(var_name=label)
     )
-    sb = sns.boxplot(data=subdata, x="value", y=label, order=["MEDIC", "TOPUP"], ax=ax, fliersize=1, linewidth=0.5)
+    sb = sns.boxplot(
+        data=subdata,
+        x="value",
+        y=label,
+        order=["MEDIC", "TOPUP"],
+        ax=ax,
+        fliersize=1,
+        linewidth=0.5,
+        palette=[p[1], p[0]],
+    )
     sb.set_xlabel("")
     sb.set_ylabel(label, labelpad=2)
     ax.tick_params(axis="x", pad=-3)
@@ -701,13 +711,13 @@ def alignment_metrics(data):
     subfigs = fig.subfigures(1, 2, width_ratios=[2, 1], wspace=0.025)
     subfigs2 = subfigs[0].subfigures(2, 1, hspace=0.05, height_ratios=[3, 1])
     fig_global = subfigs2[0]
-    fig_global.suptitle("(A) Global Metrics")
+    fig_global.suptitle("(A) Global Metrics", fontsize=8, weight="normal")
     axes_global = fig_global.subplots(3, 2)
     fig_local = subfigs2[1]
-    fig_local.suptitle("(B) Local Metrics")
+    fig_local.suptitle("(B) Local Metrics", fontsize=8, weight="normal")
     axes_local = fig_local.subplots(1, 2)
     fig_roc = subfigs[1]
-    fig_roc.suptitle("(C) Segmentation Metrics")
+    fig_roc.suptitle("(C) Segmentation Metrics", fontsize=8, weight="normal")
     axes_roc = fig_roc.subplots(4, 1)
 
     # plot global metrics
