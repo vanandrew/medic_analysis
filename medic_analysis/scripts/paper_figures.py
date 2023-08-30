@@ -21,8 +21,8 @@ from nilearn.plotting.cm import _cmap_d as nilearn_cmaps
 
 # Set global seaborn figure settings
 sns.set(
-    font="Lato",
-    font_scale=1,
+    font="Inter",
+    font_scale=1.4,
     palette="pastel",
     style="white",
 )
@@ -259,8 +259,8 @@ def head_concatenation(data):
     # plot images
     # SCAN
     sns.set(
-        font="Lato",
-        font_scale=1,
+        font="Inter",
+        font_scale=1.4,
         palette="pastel",
         style="dark",
     )
@@ -309,8 +309,8 @@ def head_concatenation(data):
     ax_topup_occipital.set_yticks([])
     ax_topup_occipital.set_xlabel("TOPUP (High Motion), R = 0.322")
     sns.set(
-        font="Lato",
-        font_scale=1,
+        font="Inter",
+        font_scale=1.4,
         palette="pastel",
         style="white",
     )
@@ -391,13 +391,13 @@ def group_template_comparison(data):
     # plot t-statistic surface
     tstat_surface_path = DATA_DIR / "group_tstat_surface.png"
     tstat_surface = Image.open(tstat_surface_path)
-    sns.set(font="Lato", font_scale=1, palette="pastel", style="dark")
+    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="dark")
     ax2 = subfigs[1].add_subplot(gs[11:, :])
     ax2.imshow(tstat_surface)
     ax2.set_xticks([])
     ax2.set_yticks([])
     ax2.set_title("(C) Vertex-wise similarity t-statistic map", pad=20)
-    sns.set(font="Lato", font_scale=1, palette="pastel", style="white")
+    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="white")
     cbar_ax = subfigs[1].add_subplot(gs[19:, :])
     spectral_map = plt.cm.get_cmap("Spectral")
     spectral_rmap = spectral_map.reversed()
@@ -423,7 +423,7 @@ def group_template_comparison(data):
     topup_occipital_path = DATA_DIR / "topup_occipital_20008.png"
     topup_occipital = Image.open(topup_occipital_path)
     gs = GridSpec(20, 10, left=0.05, right=0.95, bottom=0.05, top=0.95, hspace=0.05)
-    sns.set(font="Lato", font_scale=1, palette="pastel", style="dark")
+    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="dark")
     axl1 = subfigs[0].add_subplot(gs[:5, :])
     axl2 = subfigs[0].add_subplot(gs[7:12, :])
     axl3 = subfigs[0].add_subplot(gs[13:18, :])
@@ -440,7 +440,7 @@ def group_template_comparison(data):
     axl3.set_xticks([])
     axl3.set_yticks([])
     axl3.set_xlabel("TOPUP (R = 0.342)")
-    sns.set(font="Lato", font_scale=1, palette="pastel", style="white")
+    sns.set(font="Inter", font_scale=1.4, palette="pastel", style="white")
     cbar_ax = subfigs[0].add_subplot(gs[19:, :])
     pl = cbar_ax.imshow(np.array([[-0.5, 0.5], [0.5, -0.5]]), vmin=-0.5, vmax=0.5, cmap=nilearn_cmaps["roy_big_bl"])
     cbar_ax.set_visible(False)
@@ -724,7 +724,7 @@ def tsnr_comparision(data):
     tsnr_table = pd.read_csv(data)
     f = plt.figure(figsize=(90 * MM_TO_INCHES * 3, 45 * MM_TO_INCHES * 3), layout="constrained")
     ax = f.add_subplot(1, 1, 1)
-    plot_box_plot(tsnr_table, "mean_tsnr_masked", "TSNR", ax)
+    plot_box_plot(tsnr_table, "mean_tsnr_masked", "tSNR", ax)
     ax.set_xlim([0, 160])
     f.savefig(FIGURES_DIR / "tsnr.png", dpi=100)
     current_dir = os.getcwd()
@@ -808,8 +808,8 @@ def head_position_videos(data):
         return set_figure_labels
 
     sns.set(
-        font="Lato",
-        font_scale=1,
+        font="Inter",
+        font_scale=1.4,
         palette="dark",
         style="white",
         rc={

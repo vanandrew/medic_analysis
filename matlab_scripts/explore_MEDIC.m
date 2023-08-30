@@ -231,4 +231,3 @@ datatable = cell2table(datacell, 'VariableNames', {'Subject', 'Session', 'Run', 
 fid = fopen('../data/paircorr.json', 'w');
 fprintf(fid, '%s', jsonencode(datatable));
 fclose(fid);
-
