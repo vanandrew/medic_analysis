@@ -9,6 +9,7 @@ import nibabel as nib
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from scipy.stats import ttest_rel
 import pandas as pd
 import seaborn as sns
 from medic_analysis.common import data_plotter, render_dynamic_figure, hz_limits_to_mm
@@ -457,16 +458,19 @@ def group_template_comparison(data):
         location="bottom",
         orientation="horizontal",
         ticks=[-0.5, -0.25, 0, 0.25, 0.5],
-        aspect=40,
+        aspect=60,
         fraction=1.0,
     )
     # create axis for colorbar
     cbar.ax.set_xlabel("Correlation", labelpad=2)
 
     # plot group similarities
+    settings = GLOBAL_SETTINGS.copy()
+    settings["style"] = "darkgrid"
+    sns.set_theme(**settings)
     ax1 = f.add_subplot(gs[:9, 11:])
-    sns.scatterplot(topup_better_similarities_topup, medic_better_similarities_topup, s=12, ax=ax1)
-    sns.scatterplot(topup_better_similarities_medic, medic_better_similarities_medic, s=12, ax=ax1)
+    sns.scatterplot(topup_better_similarities_topup, medic_better_similarities_topup, s=14, ax=ax1)
+    sns.scatterplot(topup_better_similarities_medic, medic_better_similarities_medic, s=14, ax=ax1)
     ax1.axline((0, 0), slope=1, color="black", linestyle="--")
     ax1.set_xlabel("TOPUP Mean Similarity (Correlation)", labelpad=4)
     ax1.set_ylabel("MEDIC Mean Similarity (Correlation)", labelpad=4)
@@ -484,8 +488,12 @@ def group_template_comparison(data):
     y = x
     y2 = np.ones(x.shape) * 0.6
     y3 = np.zeros(x.shape)
-    ax1.fill_between(x, y, y2, color="red", alpha=0.2)
-    ax1.fill_between(x, y3, y, color="blue", alpha=0.2)
+    colors = sns.color_palette("pastel")
+    medic_color = colors[1]
+    topup_color = colors[0]
+    ax1.fill_between(x, y, y2, color=medic_color, alpha=0.2)
+    ax1.fill_between(x, y3, y, color=topup_color, alpha=0.2)
+    sns.set_theme(**GLOBAL_SETTINGS)
 
     # plot t-statistic surface
     tstat_surface_path = DATA_DIR / "group_tstat_surface.png"
@@ -508,7 +516,7 @@ def group_template_comparison(data):
         location="bottom",
         orientation="horizontal",
         ticks=[-6, -3, 0, 3, 6],
-        aspect=40,
+        aspect=60,
         fraction=1.0,
     )
     # create axis for colorbar
@@ -554,7 +562,7 @@ def fmap_comparison(data_dir):
     label_width = 0.04
     label_height = 0.04
     colorbar_width = 0.075
-    colorbar_gap = 0.05
+    colorbar_gap = 0.06
     colorbar_pad = 0.025
     cbar_labelpad = -30
     width = base_width * width_mult
@@ -601,7 +609,7 @@ def fmap_comparison(data_dir):
         location="right",
         orientation="vertical",
         ticks=[-50, -25, 0, 25, 50],
-        aspect=40,
+        aspect=60,
         fraction=1.0,
     )
     # create axis for colorbar
@@ -699,29 +707,32 @@ def spotlight_comparison(data):
         for j in range(3):
             axes_list2.append(subfigs[2].add_subplot(gs[i, j]))
 
+    # create new cmap
+    new_cmap = sns.diverging_palette(210, 30, l=70, center="dark", as_cmap=True)
+
     # plot slices, iterate over list
     for i, s in enumerate(slices):
         ax1 = axes_list1[i]
         ax1.imshow(t1_atlas_exemplar[..., s].T, cmap="gray", origin="lower")
-        a = ax1.imshow(t1_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
+        a = ax1.imshow(t1_tstat[..., s].T, cmap=new_cmap, vmin=-10, vmax=10, origin="lower", alpha=0.75)
         ax1.set_xticks([])
         ax1.set_yticks([])
         if i == 0:
             source_plot = a
         ax2 = axes_list2[i]
         ax2.imshow(t2_atlas_exemplar[..., s].T, cmap="gray", origin="lower")
-        ax2.imshow(t2_tstat[..., s].T, cmap="icefire", vmin=-10, vmax=10, origin="lower", alpha=0.75)
+        ax2.imshow(t2_tstat[..., s].T, cmap=new_cmap, vmin=-10, vmax=10, origin="lower", alpha=0.75)
         ax2.set_xticks([])
         ax2.set_yticks([])
-    axes_list1[1].set_title("(A) T1w $R^2$ Spotlight", pad=4)
-    axes_list2[1].set_title("(B) T2w $R^2$ Spotlight", pad=4)
+    axes_list1[1].set_title("(A) T1w R$^2$ Spotlight", pad=4)
+    axes_list2[1].set_title("(B) T2w R$^2$ Spotlight", pad=4)
     # create axis for colorbar
     cbar = subfigs[0].colorbar(
         source_plot,
         ax=cbar_ax,
         location="left",
         orientation="vertical",
-        aspect=40,
+        aspect=60,
         pad=-0.5,
         fraction=1.0,
     )
@@ -741,6 +752,9 @@ def alignment_metrics(data):
     data = pd.read_csv(data)
 
     # create figures
+    settings = GLOBAL_SETTINGS.copy()
+    settings["style"] = "darkgrid"
+    sns.set_theme(**settings)
     mpl.rcParams["axes.labelsize"] = 6
     mpl.rcParams["xtick.labelsize"] = 6
     mpl.rcParams["ytick.labelsize"] = 6
@@ -766,14 +780,123 @@ def alignment_metrics(data):
     plot_box_plot(data, "nmi_t2", "T2w NMI", axes_global[2][1])
 
     # plot local metrics
-    plot_box_plot(data, "local_corr_mean_t1", "T1w $R^2$\nSpotlight", axes_local[0])
-    plot_box_plot(data, "local_corr_mean_t2", "T2w $R^2$\nSpotlight", axes_local[1])
+    plot_box_plot(data, "local_corr_mean_t1", "T1w R$^2$\nSpotlight", axes_local[0])
+    plot_box_plot(data, "local_corr_mean_t2", "T2w R$^2$\nSpotlight", axes_local[1])
 
     # plot ROC metrics
     plot_box_plot(data, "roc_gw", "Gray/White\nMatter AUC", axes_roc[0])
     plot_box_plot(data, "roc_ie", "Brain/Exterior\nAUC", axes_roc[1])
     plot_box_plot(data, "roc_vw", "Ventricles/White\nMatter AUC", axes_roc[2])
     plot_box_plot(data, "roc_cb_ie", "Cerebellum/Exterior\nAUC", axes_roc[3])
+
+    # print ttest results
+    res = ttest_rel(data.corr_t1_medic, data.corr_t1_topup)
+    print(f"T1w Corr^2: MEDIC={data.corr_t1_medic.mean()} ({data.corr_t1_medic.std()})")
+    print(f"T1w Corr^2: TOPUP={data.corr_t1_topup.mean()} ({data.corr_t1_topup.std()})")
+    print(f"T1w Corr^2: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.corr_t1_medic.mean()} ({data.corr_t1_medic.std()}); "
+        f"TOPUP={data.corr_t1_topup.mean()} ({data.corr_t1_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.corr_t2_medic, data.corr_t2_topup)
+    print(f"T2w Corr^2: MEDIC={data.corr_t2_medic.mean()} ({data.corr_t2_medic.std()})")
+    print(f"T2w Corr^2: TOPUP={data.corr_t2_topup.mean()} ({data.corr_t2_topup.std()})")
+    print(f"T2w Corr^2: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.corr_t2_medic.mean()} ({data.corr_t2_medic.std()}); "
+        f"TOPUP={data.corr_t2_topup.mean()} ({data.corr_t2_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.grad_corr_t1_medic, data.grad_corr_t1_topup)
+    print(f"T1w Grad. Corr: MEDIC={data.grad_corr_t1_medic.mean()} ({data.grad_corr_t1_medic.std()})")
+    print(f"T1w Grad. Corr: TOPUP={data.grad_corr_t1_topup.mean()} ({data.grad_corr_t1_topup.std()})")
+    print(f"T1w Grad. Corr: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.grad_corr_t1_medic.mean()} ({data.grad_corr_t1_medic.std()}); "
+        f"TOPUP={data.grad_corr_t1_topup.mean()} ({data.grad_corr_t1_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.grad_corr_t2_medic, data.grad_corr_t2_topup)
+    print(f"T2w Grad. Corr: MEDIC={data.grad_corr_t2_medic.mean()} ({data.grad_corr_t2_medic.std()})")
+    print(f"T2w Grad. Corr: TOPUP={data.grad_corr_t2_topup.mean()} ({data.grad_corr_t2_topup.std()})")
+    print(f"T2w Grad. Corr: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.grad_corr_t2_medic.mean()} ({data.grad_corr_t2_medic.std()}); "
+        f"TOPUP={data.grad_corr_t2_topup.mean()} ({data.grad_corr_t2_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.nmi_t1_medic, data.nmi_t1_topup)
+    print(f"T1w NMI: MEDIC={data.nmi_t1_medic.mean()} ({data.nmi_t1_medic.std()})")
+    print(f"T1w NMI: TOPUP={data.nmi_t1_topup.mean()} ({data.nmi_t1_topup.std()})")
+    print(f"T1w NMI: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.nmi_t1_medic.mean()} ({data.nmi_t1_medic.std()}); "
+        f"TOPUP={data.nmi_t1_topup.mean()} ({data.nmi_t1_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.nmi_t2_medic, data.nmi_t2_topup)
+    print(f"T2w NMI: MEDIC={data.nmi_t2_medic.mean()} ({data.nmi_t2_medic.std()})")
+    print(f"T2w NMI: TOPUP={data.nmi_t2_topup.mean()} ({data.nmi_t2_topup.std()})")
+    print(f"T2w NMI: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.nmi_t2_medic.mean()} ({data.nmi_t2_medic.std()}); "
+        f"TOPUP={data.nmi_t2_topup.mean()} ({data.nmi_t2_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.local_corr_mean_t1_medic, data.local_corr_mean_t1_topup)
+    print(f"T1w Spotlight: MEDIC={data.local_corr_mean_t1_medic.mean()} ({data.local_corr_mean_t1_medic.std()})")
+    print(f"T1w Spotlight: TOPUP={data.local_corr_mean_t1_topup.mean()} ({data.local_corr_mean_t1_topup.std()})")
+    print(f"T1w Spotlight: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.local_corr_mean_t1_medic.mean()} ({data.local_corr_mean_t1_medic.std()}); "
+        f"TOPUP={data.local_corr_mean_t1_topup.mean()} ({data.local_corr_mean_t1_topup.std()}); p={res.pvalue}; t={res.statistic}\n"  # noqa: E501
+    )
+
+    res = ttest_rel(data.local_corr_mean_t2_medic, data.local_corr_mean_t2_topup)
+    print(f"T2w Spotlight: MEDIC={data.local_corr_mean_t2_medic.mean()} ({data.local_corr_mean_t2_medic.std()})")
+    print(f"T2w Spotlight: TOPUP={data.local_corr_mean_t2_topup.mean()} ({data.local_corr_mean_t2_topup.std()})")
+    print(f"T2w Spotlight: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.local_corr_mean_t2_medic.mean()} ({data.local_corr_mean_t2_medic.std()}); "
+        f"TOPUP={data.local_corr_mean_t2_topup.mean()} ({data.local_corr_mean_t2_topup.std()}); p={res.pvalue}; t={res.statistic}\n"  # noqa: E501
+    )
+
+    res = ttest_rel(data.roc_gw_medic, data.roc_gw_topup)
+    print(f"Gray/White Matter: MEDIC={data.roc_gw_medic.mean()} ({data.roc_gw_medic.std()})")
+    print(f"Gray/White Matter: TOPUP={data.roc_gw_topup.mean()} ({data.roc_gw_topup.std()})")
+    print(f"Gray/White Matter: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.roc_gw_medic.mean()} ({data.roc_gw_medic.std()}); "
+        f"TOPUP={data.roc_gw_topup.mean()} ({data.roc_gw_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.roc_ie_medic, data.roc_ie_topup)
+    print(f"Brain/Exterior: MEDIC={data.roc_ie_medic.mean()} ({data.roc_ie_medic.std()})")
+    print(f"Brain/Exterior: TOPUP={data.roc_ie_topup.mean()} ({data.roc_ie_topup.std()})")
+    print(f"Brain/Exterior: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.roc_ie_medic.mean()} ({data.roc_ie_medic.std()}); "
+        f"TOPUP={data.roc_ie_topup.mean()} ({data.roc_ie_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.roc_vw_medic, data.roc_vw_topup)
+    print(f"Ventricles/White Matter: MEDIC={data.roc_vw_medic.mean()} ({data.roc_vw_medic.std()})")
+    print(f"Ventricles/White Matter: TOPUP={data.roc_vw_topup.mean()} ({data.roc_vw_topup.std()})")
+    print(f"Ventricles/White Matter: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.roc_vw_medic.mean()} ({data.roc_vw_medic.std()}); "
+        f"TOPUP={data.roc_vw_topup.mean()} ({data.roc_vw_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
+
+    res = ttest_rel(data.roc_cb_ie_medic, data.roc_cb_ie_topup)
+    print(f"Cerebellum/Exterior: MEDIC={data.roc_cb_ie_medic.mean()} ({data.roc_cb_ie_medic.std()})")
+    print(f"Cerebellum/Exterior: TOPUP={data.roc_cb_ie_topup.mean()} ({data.roc_cb_ie_topup.std()})")
+    print(f"Cerebellum/Exterior: p={res.pvalue}; t={res.statistic}\n")
+    print(
+        f"MEDIC={data.roc_cb_ie_medic.mean()} ({data.roc_cb_ie_medic.std()}); "
+        f"TOPUP={data.roc_cb_ie_topup.mean()} ({data.roc_cb_ie_topup.std()}); p={res.pvalue}; t={res.statistic}\n"
+    )
 
     # save figure
     fig.savefig(FIGURES_DIR / "alignment_metrics.png", dpi=300)
@@ -782,15 +905,16 @@ def alignment_metrics(data):
     Path("figure6.png").unlink(missing_ok=True)
     Path("figure6.png").symlink_to("alignment_metrics.png")
     os.chdir(current_dir)
-    mpl.rcParams["axes.labelsize"] = 8
-    mpl.rcParams["xtick.labelsize"] = 7
-    mpl.rcParams["ytick.labelsize"] = 7
+    sns.set_theme(**GLOBAL_SETTINGS)
 
 
 # figure 7
 def tsnr_comparision(data):
     # load tsnr
     tsnr_table = pd.read_csv(data)
+    settings = GLOBAL_SETTINGS.copy()
+    settings["style"] = "darkgrid"
+    sns.set_theme(**settings)
     mpl.rcParams["axes.labelsize"] = 6
     mpl.rcParams["xtick.labelsize"] = 6
     mpl.rcParams["ytick.labelsize"] = 6
@@ -804,13 +928,24 @@ def tsnr_comparision(data):
     Path("figure7.png").unlink(missing_ok=True)
     Path("figure7.png").symlink_to("tsnr.png")
     os.chdir(current_dir)
-    mpl.rcParams["axes.labelsize"] = 8
-    mpl.rcParams["xtick.labelsize"] = 7
-    mpl.rcParams["ytick.labelsize"] = 7
+    sns.set_theme(**GLOBAL_SETTINGS)
 
 
 # figure 10
 def head_position_videos(data):
+    settings = GLOBAL_SETTINGS.copy()
+    settings["rc"].update(
+        {
+            "axes.facecolor": "black",
+            "figure.facecolor": "black",
+            "axes.labelcolor": "white",
+            "axes.titlecolor": "white",
+            "text.color": "white",
+            "xtick.color": "white",
+            "ytick.color": "white",
+        }
+    )
+    sns.set_theme(**settings)
     # load field map files
     medic_fieldmaps = Path(data) / "fieldmaps" / "medic_aligned"
 
@@ -882,50 +1017,46 @@ def head_position_videos(data):
         # return function
         return set_figure_labels
 
-    gs0 = GridSpec(1, 1, left=0.05, right=0.1, bottom=0.025, top=0.975)
+    gs0 = GridSpec(1, 1, left=0.05, right=0.1, bottom=0.05, top=0.95)
     gs1 = GridSpec(
         1,
         3,
         left=0.125,
-        right=0.075,
-        bottom=0.025,
-        top=0.975,
+        right=0.95,
+        bottom=0.05,
+        top=0.95,
         hspace=0.025,
         wspace=0.025,
         width_ratios=[72, 110, 110],
     )
-    fig = plt.figure(figsize=(10, 6), layout="constrained")
-    axes_list = [fig.add_subplot(gs1[0, i]) for i in range(3)]
 
-    # create subplots
-    cbar_ax = fig.add_subplot(gs0[:, :])
-    cbar_ax.axis("off")
+    def fig_callback():
+        fig = plt.figure(figsize=(10, 6), layout="constrained")
+        axes_list = [fig.add_subplot(gs1[0, i]) for i in range(3)]
+        cbar_ax = fig.add_subplot(gs0[:, :])
+        cbar_ax.axis("off")
+        return fig, axes_list, cbar_ax
 
-    settings = GLOBAL_SETTINGS.copy()
-    settings["rc"].update({
-        "axes.facecolor": "black",
-        "figure.facecolor": "black",
-        "axes.labelcolor": "white",
-        "axes.titlecolor": "white",
-        "text.color": "white",
-        "xtick.color": "white",
-        "ytick.color": "white",
-    })
-    sns.set_theme(**settings)
-    data_plotter
     for fmap, moco, label in zip(transient_fieldmaps, motion_params, labels):
+        print(f"Processing {label}")
         render_dynamic_figure(
             str(transients_out / f"{label}.mp4"),
             [fmap],
             colorbar=True,
+            colorbar_aspect=60,
+            colorbar_pad=0,
+            colorbar_labelpad=-5,
             colorbar_alt_range=True,
-            colorbar_pad=0.35,
+            colorbar_alt_labelpad=0,
+            fraction=0.3,
+            vmin=-100,
+            vmax=150,
+            colormaps="icefire",
             figure_fx=set_moco_label(moco),
+            fig_callback=fig_callback,
             text_color="white",
-            figure=fig,
-            axes_list=axes_list,
-            cbar_ax=cbar_ax,
         )
+    sns.set_theme(**GLOBAL_SETTINGS)
 
 
 def main():

@@ -299,6 +299,7 @@ def render_dynamic_figure(
     imgs: Union[List[npt.NDArray], List[nib.Nifti1Image]],
     figure_fx: Union[Callable, None] = None,
     fps: int = 10,
+    fig_callback: Union[Callable, None] = None,
     **kwargs,
 ):
     # create temporary directory
@@ -317,8 +318,15 @@ def render_dynamic_figure(
         # loop through frames
         for frame_num in range(num_frames):
             logging.info(f"Rendering frame {frame_num+1} of {num_frames}")
+
+            # if fig_callback exists, call it
+            if fig_callback is not None:
+                fig, axes_list, cbar_ax = fig_callback()
+
             # plot data and get figure
-            figure = data_plotter(imgs=imgs, **kwargs, frame_num=frame_num)
+            figure = data_plotter(
+                imgs=imgs, **kwargs, figure=fig, axes_list=axes_list, cbar_ax=cbar_ax, frame_num=frame_num
+            )
 
             # modify the figure with figure_fx if it exists
             if figure_fx is not None:
