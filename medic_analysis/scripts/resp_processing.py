@@ -8,16 +8,22 @@ import numpy as np
 import pandas as pd
 import nibabel as nib
 import pydicom
+import matplotlib.pyplot as plt
+import seaborn as sns
 from warpkit.distortion import medic
 from warpkit.unwrap import create_brain_mask
 from warpkit.utilities import displacement_map_to_field, resample_image
 from medic_analysis.common import apply_framewise_mats, framewise_align, sns, plt, run_topup
+from scipy.signal import filtfilt, iirfilter, periodogram, freqs
 import simplebrainviewer as sbv
 from . import (
     parser,
     PED_TABLE,
     POLARITY_IDX,
 )
+
+
+sns.set_theme(style="darkgrid", palette="pastel", font="Satoshi")
 
 
 # Define the path to the BIDS dataset
@@ -126,7 +132,7 @@ def waveform_data_to_frame(waveform_data: Dict) -> pd.DataFrame:
     # add TIME column for ACQ_TIME_TIC (seconds)
     if "ACQ_TIME_TIC" in frame.columns:
         frame["TIME"] = frame["ACQ_TIME_TIC"] * 2.5 / 1000
-        frame.set_index("ACQ_TIME_TIC", inplace=True)
+        # frame.set_index("ACQ_TIME_TIC", inplace=True)
 
     # do the same for ACQ_START_TICS and ACQ_FINISH_TICS
     if "ACQ_START_TICS" in frame.columns:
@@ -138,6 +144,7 @@ def waveform_data_to_frame(waveform_data: Dict) -> pd.DataFrame:
         # make interval index for frame
         interval_index = pd.IntervalIndex.from_arrays(frame["ACQ_START_TICS"], frame["ACQ_FINISH_TICS"], closed="left")
         frame.set_index(interval_index, inplace=True)
+        frame.index.name = "interval"
 
     # return the dataframe
     return frame
@@ -146,7 +153,6 @@ def waveform_data_to_frame(waveform_data: Dict) -> pd.DataFrame:
 def main():
     # add to parser
     parser.add_argument("--runs", nargs="+", default=["02"])
-    parser.add_argument("--num_frames", type=int, default=510, help="number of frames in the scan")
 
     # call the parser
     args = parser.parse_args()
@@ -183,34 +189,39 @@ def main():
             ref_data = mag_imgs[0].dataobj[..., 100]
             nib.Nifti1Image(ref_data, mag_imgs[0].affine).to_filename("ref.nii")
 
-            # compute motion parameters
-            framewise_align("ref.nii", mag[0].path, "mcflirt")
+            # compute framewise correction
+            if not PathMan("mcflirt.nii.gz").exists():
+                framewise_align("ref.nii", mag[0].path, "mcflirt")
 
-            # load in motion params, convert rotations to mm
-            motion_params = np.loadtxt("mcflirt.par")
-            motion_params[:, :3] = np.rad2deg(motion_params[:, :3])
-            motion_params[:, :3] = 50 * (np.pi / 180) * motion_params[:, :3]
-            motion_params = motion_params[: args.num_frames]
+            # get num frames
+            num_frames = mag_imgs[0].shape[-1] - 3
+            print(f"Run {run}")
+            print(f"Number of frames: {num_frames}")
 
             # run medic
-            # fmap_native, dmap, fmap = medic(
-            #     phase_imgs,
-            #     mag_imgs,
-            #     TEs,
-            #     total_readout_time,
-            #     phase_encoding_direction,
-            #     n_cpus=8,
-            #     frames=list(range(args.num_frames)),
-            #     border_size=5,
-            #     svd_filt=30,
-            # )
-            # fmap_native.to_filename("fmap_native.nii.gz")
-            # dmap.to_filename("dmap.nii.gz")
-            # fmap.to_filename("fmap.nii.gz")
+            if not PathMan("fmap.nii.gz").exists():
+                fmap_native, dmap, fmap = medic(
+                    phase_imgs,
+                    mag_imgs,
+                    TEs,
+                    total_readout_time,
+                    phase_encoding_direction,
+                    n_cpus=8,
+                    frames=[i for i in range(num_frames)],
+                    border_size=3,
+                    svd_filt=10,
+                )
+                fmap_native.to_filename("fmap_native.nii.gz")
+                dmap.to_filename("dmap.nii.gz")
+                fmap.to_filename("fmap.nii.gz")
+
+            # apply framewise correction
+            if not PathMan("fmap_aligned.nii.gz").exists():
+                apply_framewise_mats("ref.nii", "fmap.nii.gz", "mcflirt.mat", "fmap_aligned.nii.gz")
 
             # make brain mask of reference image
             ref_img = nib.load("ref.nii")
-            mask = create_brain_mask(ref_img.get_fdata(), 0)
+            brain_mask = create_brain_mask(ref_img.get_fdata(), 0)
 
             # BELOW TAKEN FROM bidsphysio PACKAGE
 
@@ -273,215 +284,139 @@ def main():
             datatable = waveform_data["ACQUISITION_INFO"]
 
             # leave out last 3 volumes (noise frames)
-            datatable = datatable[datatable.VOLUME < args.num_frames]
+            datatable = datatable[datatable.VOLUME < num_frames]
 
-            # split data by slice
-            slice_tables = dict()
-            for slice_num in datatable.SLICE.unique():
-                slice_tables[slice_num] = datatable[datatable.SLICE == slice_num]
-
-            volume_tables = dict()
             # loop through rows of ACQUISITION_INFO and compute the mean of the waveform value for each row
             for wave in waveform_data:
                 # skip acquisition info
                 if waveform_data[wave].attrs["LogDataType"] == "ACQUISITION_INFO":
                     continue
 
-                # loop through each slice in a single band (for multi-band 6 this is slices 0 - 11)
-                for slice_num in range(12):
-                    # get the slice table
-                    slice_table = slice_tables[slice_num]
+                waveform = waveform_data[wave]
+                # rename VALUE column to wave name
+                waveform.rename(columns={"VALUE": wave}, inplace=True)
 
-                    # get the indexer for the slice table and apply it to the waveform data
-                    waveform_data[wave]["interval"] = slice_table.index.get_indexer(waveform_data[wave].index)
+                print(f"Waveform: {wave}")
+                # get interval index
+                interval_index = datatable.index
+                # drop duplicates
+                interval_index = interval_index.drop_duplicates()
 
-                    # for the subset, rename VALUE to the wave name
-                    waveform_data[wave] = waveform_data[wave].rename(columns={"VALUE": wave})
+                # get the indexer on the current waveform to line up the interval index ot the waveform index
+                indexer = interval_index.get_indexer(waveform.ACQ_TIME_TIC)
+                aligned_interval_index = interval_index.take(indexer)
+                mask = indexer != -1
+                waveform.set_index(aligned_interval_index, inplace=True)
+                waveform = waveform[mask]
+                waveform.drop(columns=["ACQ_TIME_TIC", "TIME"], inplace=True)
 
-                    # group the subset by the interval and take mean
-                    mean_values = waveform_data[wave].groupby("interval").mean()
-                    # remove the -1 intervals
-                    mean_values = mean_values[mean_values.index != -1]
+                # join the waveform data the aligned interval index
+                datatable = datatable.join(waveform)
 
-                    # get size of slice_table
-                    slice_table_size = slice_table.shape[0]
+            # drop nan values
+            datatable.dropna(inplace=True)
 
-                    # if size of mean_values is not equal to slice_table_size, figure out which indices are missing
-                    # and fill them in with the mean of the present indices
-                    if mean_values.shape[0] != slice_table_size:
-                        # get the indices of the slice table
-                        slice_table_indices = np.arange(slice_table_size)
+            # slice volume table
+            slicetable = datatable.groupby(["VOLUME", "SLICE"]).mean()
 
-                        # get the indices of the mean values
-                        mean_values_indices = mean_values.index.values
+            # group by volume and compute mean
+            datatable = datatable.groupby("VOLUME").mean()
 
-                        # get the indices that are missing
-                        missing_indices = np.setdiff1d(slice_table_indices, mean_values_indices)
-
-                        # get the internal for each missing index
-                        missing_intervals = slice_table.iloc[missing_indices].index
-
-                        # for each missing interval get the closest value in the waveform data for start and finish
-                        # average them to get the substitute value
-                        for inter, indi in zip(missing_intervals, missing_indices):
-                            # get indices closest to start and end of interval
-                            start_min = np.argmin(np.abs(inter.left - waveform_data[wave].index))
-                            end_min = np.argmin(np.abs(inter.right - waveform_data[wave].index))
-
-                            # get the mean of the start and end values
-                            mean_values.loc[indi] = waveform_data[wave].iloc[[start_min, end_min]].mean()
-
-                    # merge into slice_table
-                    slice_table.set_index(mean_values.index, inplace=True)
-                    slice_table = slice_table.merge(mean_values, left_index=True, right_index=True)
-
-                    # reset the interval index for the slice table
-                    slice_table.set_index(
-                        pd.IntervalIndex.from_arrays(
-                            slice_table.ACQ_START_TICS, slice_table.ACQ_FINISH_TICS, closed="left"
-                        ),
-                        inplace=True,
-                    )
-
-                    # now summarize over the VOLUME for the slice, this will average over echoes
-                    volume_tables[slice_num] = slice_table.groupby("VOLUME").mean()
-
-                    # store the slice table
-                    slice_tables[slice_num] = slice_table
-
-            # # draw plots
-            # f = plt.figure(figsize=(16, 8), layout="constrained")
-            # subplots = f.subplots(2, 1)
-            # for slice_num in range(12):
-            #     sns.lineplot(
-            #         data=volume_tables[slice_num], x="VOLUME", y="RESP", label=f"Slice {slice_num}", ax=subplots[0]
-            #     )
-            #     sns.lineplot(
-            #         data=volume_tables[slice_num], x="VOLUME", y="PULS", label=f"Slice {slice_num}", ax=subplots[1]
-            #     )
-            # subplots[0].set_title("RESP")
-            # subplots[1].set_title("PULS")
+            # normalize (z-score) data
+            for wave in waveform_data:
+                if waveform_data[wave].attrs["LogDataType"] == "ACQUISITION_INFO":
+                    continue
+                slicetable[wave] = (slicetable[wave] - slicetable[wave].mean()) / slicetable[wave].std()
+                # normalize the waveform data
+                datatable[wave] = (datatable[wave] - datatable[wave].mean()) / datatable[wave].std()
 
             # load the field map data
-            fmap_img = nib.load("fmap.nii.gz")
+            fmap_img = nib.load("fmap_aligned.nii.gz")
+            fmap_volume = fmap_img.get_fdata()
 
-            # build the respiration data into an entire volume
-            resp_volume = np.zeros(fmap_img.shape)
-            for slice_idx in range(fmap_img.shape[2]):
-                # assign the resp data to the volume
-                resp_volume[:, :, slice_idx, :] = volume_tables[slice_idx % 12]["RESP"].values[
-                    np.newaxis, np.newaxis, :
-                ]
+            # construct a high pass filter and filter the fmap data
+            tr = 1.761
+            fs = 1 / tr
+            fn = fs / 2
+            w0_cutoff = 0.15 / fn
+            b, a = iirfilter(2, w0_cutoff, btype="highpass", output="ba", ftype="butter")
 
-            # for each slice compute regression model of resp vs. fmap
-            fmap_data = fmap_img.get_fdata()
-            residual_map = np.zeros(fmap_img.shape[:-1])
-            variance_map = np.zeros(fmap_img.shape[:-1])
-            residual_map2 = np.zeros(fmap_img.shape[:-1])
-            variance_map2 = np.zeros(fmap_img.shape[:-1])
-            r2_map = np.zeros(fmap_img.shape[:-1])
-            for slice_idx in range(fmap_img.shape[2]):
-                # first mask the current slice with the brain mask
-                fmap_slice = fmap_data[mask[..., slice_idx], slice_idx, :]
-                resp_trace = volume_tables[slice_idx % 12]["RESP"].values
+            # filter fmap data
+            print("Filtering field map data")
+            fmap_volume_filtered = filtfilt(b, a, fmap_volume, axis=-1)
 
-                # build the design matrix for this slice
-                design_matrix = np.stack((np.ones(resp_trace.shape), resp_trace), axis=1)
-                # add motion params
-                design_matrix = np.concatenate((design_matrix, motion_params), axis=1)
+            # create a table for each slice
+            fmap_volume_filtered_masked = np.ma.masked_array(
+                fmap_volume_filtered, mask=np.broadcast_to(~brain_mask[..., np.newaxis], fmap_volume_filtered.shape)
+            )
+            fmap_slices_filtered = fmap_volume_filtered_masked.mean(axis=(0, 1)).data
+            fmap_slices_filtered = (
+                fmap_slices_filtered - fmap_slices_filtered.mean(axis=-1, keepdims=True)
+            ) / fmap_slices_filtered.std(axis=-1, keepdims=True)
 
-                # build response matrix for this slice
-                response_matrix = fmap_slice.T
+            # get resp by volume slice
+            resp_volume = np.zeros(fmap_volume.shape[:-1])
+            for i in range(fmap_volume_filtered.shape[2]):
+                resp_volume[:, :, i] = np.corrcoef(
+                    slicetable.loc[pd.IndexSlice[:, i], :]["RESP"], fmap_slices_filtered[i, :]
+                )[0, 1]
+            nib.Nifti1Image(resp_volume * brain_mask, fmap_img.affine).to_filename("resp_volume.nii.gz")
+            # do same for pulse ox
+            pulse_volume = np.zeros(fmap_volume.shape[:-1])
+            for i in range(fmap_volume_filtered.shape[2]):
+                pulse_volume[:, :, i] = np.corrcoef(
+                    slicetable.loc[pd.IndexSlice[:, i], :]["PULS"], fmap_slices_filtered[i, :]
+                )[0, 1]
+            nib.Nifti1Image(pulse_volume * brain_mask, fmap_img.affine).to_filename("puls_volume.nii.gz")
 
-                # compute the regression on this model
-                _, residuals, _, _ = np.linalg.lstsq(design_matrix, response_matrix, rcond=None)
+            # average signal before filtering for comparison
+            fmap_signal = fmap_volume[brain_mask, :].mean(axis=0)
 
-                # store the residuals in the residual map
-                residual_map[mask[..., slice_idx], slice_idx] = residuals
+            # average over the brain mask
+            fmap_signal_filtered = fmap_volume_filtered[brain_mask, :].mean(axis=0)
 
-                # compute variance and store in variance map
-                variance_map[mask[..., slice_idx], slice_idx] = fmap_slice.var(axis=1) * fmap_slice.shape[1]
-
-                # just motion params
-                design_matrix2 = np.concatenate((np.ones(resp_trace.shape)[:, np.newaxis], motion_params), axis=1)
-                _, residuals2, _, _ = np.linalg.lstsq(design_matrix2, response_matrix, rcond=None)
-                residual_map2[mask[..., slice_idx], slice_idx] = residuals2
-                variance_map2[mask[..., slice_idx], slice_idx] = fmap_slice.var(axis=1) * fmap_slice.shape[1]
-
-            # compute the r2 map
-            r2_map = 1 - np.divide(
-                residual_map, variance_map, out=np.zeros_like(residual_map), where=(variance_map != 0)
+            # normalize the fmap signal
+            fmap_signal = (fmap_signal - fmap_signal.mean()) / fmap_signal.std()
+            fmap_signal_filtered = (fmap_signal_filtered - fmap_signal_filtered.mean()) / fmap_signal_filtered.std()
+            fmap_datatable = pd.DataFrame(
+                {
+                    "VOLUME": np.arange(fmap_signal.shape[0]),
+                    "fmap_signal": fmap_signal,
+                    "fmap_signal_filtered": fmap_signal_filtered,
+                }
             )
 
-            # compute the r2 map for just motion params
-            r2_map2 = 1 - np.divide(
-                residual_map2, variance_map2, out=np.zeros_like(residual_map2), where=(variance_map2 != 0)
-            )
+            # plot power spectrum
+            fig1 = plt.figure(figsize=(10, 5), layout="constrained")
+            f0, p0 = periodogram(datatable["RESP"], fs=fs)
+            f1, p1 = periodogram(fmap_signal, fs=fs)
+            f2, p2 = periodogram(fmap_signal_filtered, fs=fs)
+            fmap_power_spectra = pd.DataFrame({"Frequency (Hz)": f1, "Unfiltered": p1, "Filtered": p2})
+            fmap_power_spectra.set_index("Frequency (Hz)", inplace=True)
+            ax = fig1.subplots(2, 1)
+            sns.lineplot(data={"Frequency (Hz)": f0, "Power": p0}, x="Frequency (Hz)", y="Power", ax=ax[0])
+            sns.lineplot(data=fmap_power_spectra, ax=ax[1])
+            ax[0].set_title("Power Spectrum of Respiration Signal from Respiratory Belt")
+            ax[0].set_ylim(0, 60)
+            ax[1].set_title("Power Spectrum of Avg. MEDIC Field Map Signal")
+            ax[1].axvline(w0_cutoff * fn, color="r", linestyle="--")
+            ax[1].set_ylim(0, 60)
 
-            # set areas outside map to 0
-            r2_map[~mask] = 0
-            r2_map2[~mask] = 0
+            # plot the curves
+            pastel_colors = sns.color_palette("pastel")
+            fig2 = plt.figure(figsize=(10, 5), layout="constrained")
+            ax = fig2.subplots(2, 1)
+            sns.lineplot(data=datatable, x="VOLUME", y="RESP", ax=ax[0])
+            corr = np.corrcoef(datatable["RESP"], fmap_signal_filtered)[0, 1]
+            ax[0].set_xlabel("Frame #")
+            ax[0].set_ylabel("Normalized Respiration Signal")
+            ax[0].set_title("Respiration Signal from Respiratory Belt")
+            ax[0].set_ylim(-3, 3)
+            sns.lineplot(data=fmap_datatable, x="VOLUME", y="fmap_signal_filtered", ax=ax[1])
+            ax[1].set_xlabel("Frame #")
+            ax[1].set_ylabel("Normalized Respiration Signal")
+            ax[1].set_title(f"Respiration Signal from MEDIC Field Map (R = {corr:.3f})")
+            ax[1].set_ylim(-3, 3)
 
-            # plot the r2 map
-            # sbv.plot_brain(r2_map)
-            diff = r2_map - r2_map2
-
-            # eta2_avg = diff.sum(axis=0).sum(axis=0) / mask.sum(axis=0).sum(axis=0)
-            # num_voxels_slice = mask.sum(axis=0).sum(axis=0)
-            # plt.figure()
-            # sns.scatterplot(data={"slice_times": slice_times, "eta2_avg": eta2_avg}, x="slice_times", y="eta2_avg")
-            # plt.figure()
-            # plt.plot(num_voxels_slice)
-            # plt.show()
-
-            # save the r2 map to file
-            nib.Nifti1Image(r2_map, fmap_img.affine).to_filename("r2_map.nii.gz")
-            nib.Nifti1Image(r2_map2, fmap_img.affine).to_filename("r2_map_motion_only.nii.gz")
-            nib.Nifti1Image(diff, fmap_img.affine).to_filename("r2_map_respiration.nii.gz")
-
-            # apply corrections to the data using the field map
-            # load the medic displacement maps
-            displacement_maps = "dmap.nii.gz"
-            dmaps_img = nib.load(displacement_maps)
-
-            # get the first echo images to correct
-            first_echo_img = mag_imgs[0]
-
-            # for each frame apply the correction
-            corrected_data = np.zeros((*first_echo_img.shape[:3], args.num_frames))
-            for frame_idx in range(args.num_frames):
-                logging.info(f"Correcting Frame: {frame_idx}")
-                # get the frame to correct
-                frame_data = first_echo_img.dataobj[..., frame_idx]
-
-                # make into image
-                frame_img = nib.Nifti1Image(frame_data, first_echo_img.affine)
-
-                # get the dmap for this frame
-                dmap_data = dmaps_img.dataobj[..., frame_idx]
-
-                # make into image
-                dmap_img = nib.Nifti1Image(dmap_data, dmaps_img.affine)
-
-                # get displacement field
-                dfield_img = displacement_map_to_field(dmap_img)
-
-                # apply the correction
-                corrected_img = resample_image(ref_img, frame_img, dfield_img)
-
-                # store the corrected_frame
-                corrected_data[..., frame_idx] = corrected_img.get_fdata()
-
-            # save the corrected data
-            corrected_img = nib.Nifti1Image(corrected_data, first_echo_img.affine)
-            corrected_img.to_filename("medic_corrected.nii.gz")
-
-            # get new ref img
-            new_ref_img = nib.Nifti1Image(corrected_data[..., 100], first_echo_img.affine)
-            new_ref_img.to_filename("new_ref.nii")
-
-            # compute motion parameters
-            framewise_align("new_ref.nii", "medic_corrected", "mcflirt_corrected")
-
-            # apply moco params from distorted align
-            apply_framewise_mats("new_ref.nii", "medic_corrected", "mcflirt.mat", "mcflirt_dcorrected")
+    plt.show()
+    return 0
