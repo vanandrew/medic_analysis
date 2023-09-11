@@ -4,7 +4,7 @@ from scipy.optimize import minimize_scalar, brute
 from scipy.stats import ttest_rel
 from warpkit.utilities import compute_hausdorff_distance
 from warpkit.unwrap import get_largest_connected_component
-from skimage.morphology import dilation, ball
+from skimage.morphology import dilation, ball, binary_dilation
 from sklearn.metrics import accuracy_score
 from pathlib import Path
 import simplebrainviewer as sbv
@@ -31,26 +31,36 @@ def main():
         # if "sub-20037" not in subject_dir.name:
         #     continue
         # load the subject's wmparc file
-        wmparc_path = next((subject_dir / "T1" / "atlas").glob("*_wmparc_on_MNI152_T1_2mm.nii.gz"))
+        try:
+            wmparc_path = next((subject_dir / "T1" / "atlas").glob("*_wmparc_on_MNI152_T1_2mm.nii.gz"))
+        except StopIteration:
+            continue
         wmparc_img = nib.load(wmparc_path)
+
         # get the mask data
-        mask_data = wmparc_img.get_fdata()
-        # get the gray matter mask
-        gray_mask = ((mask_data >= 2000) & (mask_data <= 2035)) | ((mask_data >= 1000) & (mask_data <= 1035))
-        # get the white matter mask
-        white_mask = ((mask_data >= 3000) & (mask_data <= 3035)) | ((mask_data >= 4000) & (mask_data <= 4035))
-        # make into images
+        mask_data = wmparc_img.get_fdata().squeeze()
+
+        # get gray matter and non gray matter
+        # gray_mask = (mask_data != 0)
+        gray_mask = ((mask_data >= 1000) & (mask_data <= 3000)) | np.isin(
+            mask_data, [47, 8, 51, 52, 12, 13, 49, 10, 16]
+        )
+        white_mask = (mask_data != 0) & ~gray_mask
         gray_mask_img = nib.Nifti1Image(gray_mask.astype("f8"), wmparc_img.affine)
+
+        # get the gray matter mask
+        # gray_mask = ((mask_data >= 2000) & (mask_data <= 2035)) | ((mask_data >= 1000) & (mask_data <= 1035))
+        # # get the white matter mask
+        # white_mask = ((mask_data >= 3000) & (mask_data <= 3035)) | ((mask_data >= 4000) & (mask_data <= 4035))
+        # # make into images
+        # gray_mask_img = nib.Nifti1Image(gray_mask.astype("f8"), wmparc_img.affine)
         # gray_mask_img.to_filename(f"{subject_dir.name}_gray_mask.nii.gz")
 
         # initialize zeros data to place masked data
-        zeros_data = np.zeros(gray_mask.shape)
+        zeros_data = np.zeros(mask_data.shape)
 
         # loop over the sessions for the subject
         for session_dir in sorted(subject_dir.glob("ses-*")):
-            # if "ses-52534" not in session_dir.name:
-            #     continue
-            # is topup
             isTOPUP = False
             session_name = session_dir.name
             if "wTOPUP" in session_dir.name:

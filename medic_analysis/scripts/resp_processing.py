@@ -16,11 +16,7 @@ from warpkit.utilities import displacement_map_to_field, resample_image
 from medic_analysis.common import apply_framewise_mats, framewise_align, sns, plt, run_topup
 from scipy.signal import filtfilt, iirfilter, periodogram, freqs
 import simplebrainviewer as sbv
-from . import (
-    parser,
-    PED_TABLE,
-    POLARITY_IDX,
-)
+from . import parser, PED_TABLE, POLARITY_IDX, FIGURES_DIR, DATA_DIR
 
 
 sns.set_theme(style="darkgrid", palette="pastel", font="Satoshi")
@@ -172,8 +168,15 @@ def main():
     output_dir = PathMan(args.output_dir)
     output_dir.mkdir(exist_ok=True)
 
+    # get number of runs
+    num_runs = len(args.runs)
+
+    # create figure with subfigures
+    # fig = plt.figure(figsize=(10 * num_runs, 10 * num_runs), layout="constrained")
+    # subfigs = fig.subfigures(num_runs, 2, wspace=0.05, hspace=0.1)
+
     # loop over runs for processing
-    for run in args.runs:
+    for run_idx, run in enumerate(args.runs):
         (output_dir / f"run-{run}").mkdir(exist_ok=True)
         with working_directory((output_dir / f"run-{run}").path):
             # load image data with params
@@ -385,26 +388,84 @@ def main():
                     "fmap_signal_filtered": fmap_signal_filtered,
                 }
             )
+            new_mask = brain_mask.copy()
+            new_mask[..., 10:] = False
+            fmap_signal2 = fmap_volume[new_mask, :].mean(axis=0)
+            fmap_signal2 = (fmap_signal2 - fmap_signal2.mean()) / fmap_signal2.std()
+            fmap_datatable2 = pd.DataFrame(
+                {
+                    "VOLUME": np.arange(fmap_signal.shape[0]),
+                    "fmap_signal": fmap_signal2,
+                }
+            )
+
+            # # puls
+            # fig = plt.figure(figsize=(20, 5), layout="constrained")
+            # subfigs = fig.subfigures(1, 2, wspace=0.1, hspace=0.1)
+            # fig1 = subfigs[0]
+            # f0, p0 = periodogram(datatable["PULS"], fs=fs)
+            # f1, p1 = periodogram(fmap_signal2, fs=fs)
+            # resp_power_spectra = pd.DataFrame({"Frequency (Hz)": f0, "Unfiltered": p0})
+            # resp_power_spectra.set_index("Frequency (Hz)", inplace=True)
+            # fmap_power_spectra = pd.DataFrame({"Frequency (Hz)": f1, "Unfiltered": p1})
+            # fmap_power_spectra.set_index("Frequency (Hz)", inplace=True)
+            # ax = fig1.subplots(2, 1)
+            # sns.lineplot(data=resp_power_spectra, ax=ax[0])
+            # sns.lineplot(data=fmap_power_spectra, ax=ax[1])
+            # ax[0].set_ylim(0, 30)
+            # ax[0].set_title("Power Spectrum of Puls Signal from Pulse Oximeter")
+            # ax[1].set_ylim(0, 30)
+            # fig2 = subfigs[1]
+            # ax = fig2.subplots(2, 1)
+            # sns.lineplot(data=datatable, x="VOLUME", y="PULS", ax=ax[0])
+            # corr = np.corrcoef(datatable["PULS"], fmap_signal2)[0, 1]
+            # ax[0].set_xlabel("Frame #")
+            # ax[0].set_ylabel("Normalized Puls Signal")
+            # ax[0].set_title("Puls Signal from Pulse Oximeter")
+            # ax[0].set_ylim(-3, 3)
+            # sns.lineplot(data=fmap_datatable2, x="VOLUME", y="fmap_signal", ax=ax[1])
+            # ax[1].set_xlabel("Frame #")
+            # ax[1].set_ylabel("Normalized Puls Signal")
+            # ax[1].set_ylim(-3, 3)
+            # plt.show()
 
             # plot power spectrum
-            fig1 = plt.figure(figsize=(10, 5), layout="constrained")
+            fig = plt.figure(figsize=(20, 5), layout="constrained")
+            fig.suptitle(f"Run {run_idx + 1}")
+            subfigs = fig.subfigures(1, 2, wspace=0.1, hspace=0.1)
+            fig1 = subfigs[0]
             f0, p0 = periodogram(datatable["RESP"], fs=fs)
             f1, p1 = periodogram(fmap_signal, fs=fs)
             f2, p2 = periodogram(fmap_signal_filtered, fs=fs)
+            resp_power_spectra = pd.DataFrame({"Frequency (Hz)": f0, "Unfiltered": p0})
+            resp_power_spectra.set_index("Frequency (Hz)", inplace=True)
             fmap_power_spectra = pd.DataFrame({"Frequency (Hz)": f1, "Unfiltered": p1, "Filtered": p2})
             fmap_power_spectra.set_index("Frequency (Hz)", inplace=True)
             ax = fig1.subplots(2, 1)
-            sns.lineplot(data={"Frequency (Hz)": f0, "Power": p0}, x="Frequency (Hz)", y="Power", ax=ax[0])
+            sns.lineplot(data=resp_power_spectra, ax=ax[0])
             sns.lineplot(data=fmap_power_spectra, ax=ax[1])
             ax[0].set_title("Power Spectrum of Respiration Signal from Respiratory Belt")
             ax[0].set_ylim(0, 60)
+            ax[0].set_ylabel("Power Spectral Density")
             ax[1].set_title("Power Spectrum of Avg. MEDIC Field Map Signal")
             ax[1].axvline(w0_cutoff * fn, color="r", linestyle="--")
             ax[1].set_ylim(0, 60)
+            ax[1].set_ylabel("Power Spectral Density")
+            power_spectra = pd.DataFrame(
+                {
+                    "Frequency (Hz)": f0,
+                    "resp_signal": p0,
+                    "fmap_signal": p1,
+                    "fmap_signal_filtered": p2,
+                }
+            )
+            power_spectra.set_index("Frequency (Hz)", inplace=True)
+            power_spectra.to_csv(DATA_DIR / f"power_spectra_run_{run_idx + 1:02d}.csv")
 
             # plot the curves
             pastel_colors = sns.color_palette("pastel")
-            fig2 = plt.figure(figsize=(10, 5), layout="constrained")
+            # fig2 = plt.figure(figsize=(10, 5), layout="constrained")
+            fig2 = subfigs[1]
             ax = fig2.subplots(2, 1)
             sns.lineplot(data=datatable, x="VOLUME", y="RESP", ax=ax[0])
             corr = np.corrcoef(datatable["RESP"], fmap_signal_filtered)[0, 1]
@@ -417,6 +478,18 @@ def main():
             ax[1].set_ylabel("Normalized Respiration Signal")
             ax[1].set_title(f"Respiration Signal from MEDIC Field Map (R = {corr:.3f})")
             ax[1].set_ylim(-3, 3)
+            fig.savefig(FIGURES_DIR / f"resp_run-{run_idx + 1}.png", dpi=300)
+            resp_datatable = pd.DataFrame(
+                {
+                    "VOLUME": np.arange(datatable.shape[0]),
+                    "resp_signal": datatable["RESP"].to_numpy(),
+                    "fmap_signal": fmap_datatable["fmap_signal_filtered"].to_numpy(),
+                }
+            )
+            resp_datatable.set_index("VOLUME", inplace=True)
+
+            # Save resp data
+            resp_datatable.to_csv(DATA_DIR / f"resp_data_run_{run_idx + 1:02d}.csv")
 
     plt.show()
     return 0
