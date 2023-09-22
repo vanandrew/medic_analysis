@@ -115,6 +115,17 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
     wmparc_img = nib.load(wmparc_path)
     wmparc_data = wmparc_img.get_fdata().squeeze()
     wmparc_brain = wmparc_data != 0
+    with open("/opt/freesurfer7.2/FreeSurferColorLUT.txt", "r") as f:
+        colortable = [[a for a in c.strip().split(" ") if a != ""] for c in f.readlines()]
+        colortable = [c for c in colortable if len(c) > 1]
+        colortable = [{"index": c[0], "label": c[1].lower()} for c in colortable if "#" not in c[0]]
+    colortable = pd.DataFrame(colortable)
+    # get ventricles
+    ventriclestable = colortable[colortable["label"].str.contains("vent") & (colortable.index < 500)]
+    # get indices of ventricles
+    ventricles = ventriclestable["index"].astype(int).values
+    wmparc_brain_nocsf = wmparc_brain.copy()
+    wmparc_brain_nocsf[np.isin(wmparc_data, ventricles)] = 0
 
     # get the average image
     avg_path = [f for f in bold_dir.glob("*_Swgt_norm.nii")][0]
@@ -124,6 +135,8 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
     # avg_data = avg_img.get_fdata().squeeze()
     # get the brain mask
     brain_mask = create_brain_mask(avg_data)
+    # brain_mask *= wmparc_brain_nocsf
+    brain_mask2 = brain_mask * wmparc_brain_nocsf
 
     # get the t1 and t2 images
     t1_img = nib.load(t1_path)
@@ -150,8 +163,8 @@ def compute_metrics(bold_dir, t1_path, t2_path, wmparc_path, pipeline, subject, 
 
     # create spotlight element
     spotlight = ball(3)
-    local_corr_t1 = rolling_window(t1_data, avg_data, spotlight, brain_mask, correlation2) * brain_mask
-    local_corr_t2 = rolling_window(t2_data, avg_data, spotlight, brain_mask, correlation2) * brain_mask
+    local_corr_t1 = rolling_window(t1_data, avg_data, spotlight, brain_mask2, correlation2) * brain_mask2
+    local_corr_t2 = rolling_window(t2_data, avg_data, spotlight, brain_mask2, correlation2) * brain_mask2
     local_corr_mean_t1 = local_corr_t1.mean()
     local_corr_mean_t2 = local_corr_t2.mean()
 
@@ -323,14 +336,14 @@ def main():
     medic_t2_mask = (np.sum(local_corr_t2_medic != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
     topup_t1_mask = (np.sum(local_corr_t1_topup != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
     topup_t2_mask = (np.sum(local_corr_t2_topup != 0, axis=-1) >= num_runs * percentage)[..., np.newaxis]
-    local_corr_t1_medic = local_corr_t1_medic * (medic_t1_mask & topup_t1_mask)
-    local_corr_t2_medic = local_corr_t2_medic * (medic_t2_mask & topup_t2_mask)
-    local_corr_t1_topup = local_corr_t1_topup * (medic_t1_mask & topup_t1_mask)
-    local_corr_t2_topup = local_corr_t2_topup * (medic_t2_mask & topup_t2_mask)
+    local_corr_t1_medic_masked = local_corr_t1_medic * (medic_t1_mask & topup_t1_mask)
+    local_corr_t2_medic_masked = local_corr_t2_medic * (medic_t2_mask & topup_t2_mask)
+    local_corr_t1_topup_masked = local_corr_t1_topup * (medic_t1_mask & topup_t1_mask)
+    local_corr_t2_topup_masked = local_corr_t2_topup * (medic_t2_mask & topup_t2_mask)
 
     # compute ttests for local correlation
-    local_corr_t1 = ttest_rel(local_corr_t1_medic, local_corr_t1_topup, axis=-1)
-    local_corr_t2 = ttest_rel(local_corr_t2_medic, local_corr_t2_topup, axis=-1)
+    local_corr_t1 = ttest_rel(local_corr_t1_medic_masked, local_corr_t1_topup_masked, axis=-1)
+    local_corr_t2 = ttest_rel(local_corr_t2_medic_masked, local_corr_t2_topup_masked, axis=-1)
     local_corr_t1_mask = local_corr_t1.pvalue < 0.05
     local_corr_t2_mask = local_corr_t2.pvalue < 0.05
     local_corr_t1_tstat = local_corr_t1.statistic * local_corr_t1_mask

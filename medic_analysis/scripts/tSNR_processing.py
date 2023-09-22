@@ -12,23 +12,12 @@ AA_DATA_DIR = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2")
 
 
 def compute_tSNR(run_dir, pipeline, subject, session, run):
-    # get the number of the run_dir
-    run_num = run_dir.name.split("bold")[-1]
-    # get the tSNR image
-    tsnr_path = [f for f in run_dir.glob("*_Swgt_norm_SNR.nii.gz")][0]
-    tsnr_img = nib.load(tsnr_path)
-    tsnr_data = tsnr_img.get_fdata().squeeze()
     # get the average image
     avg_path = [f for f in run_dir.glob("*_Swgt_norm_avg.nii.gz")][0]
     avg_img = nib.load(avg_path)
     avg_data = avg_img.get_fdata().squeeze()
     # get the brain mask
     brain_mask = create_brain_mask(avg_data)
-
-    # get the standard deviation image
-    std_path = [f for f in run_dir.glob("*_Swgt_norm_sd1.nii.gz")][0]
-    std_img = nib.load(std_path)
-    std_data = std_img.get_fdata().squeeze()
 
     # get the tmask
     tmask_path = [f for f in run_dir.glob("*_tmask.txt")][0]
@@ -53,10 +42,6 @@ def compute_tSNR(run_dir, pipeline, subject, session, run):
     # get masked tSNR and std
     tsnr_masked_data = data_mean[std_mask] / data_std[std_mask]
     mean_tsnr_masked = np.mean(tsnr_masked_data)
-    std_masked_data = data_std[std_mask]
-    mean_std_masked = np.mean(std_masked_data)
-    mean_tsnr = np.mean(tsnr_data[brain_mask])
-    mean_std = np.mean(std_data[brain_mask])
     return {
         "pipeline": pipeline,
         "subject": subject,
@@ -65,10 +50,7 @@ def compute_tSNR(run_dir, pipeline, subject, session, run):
         "good_frames": good_frames,
         "percent_good_frames": percent_good_frames,
         "num_frames": tmask.size,
-        "mean_tsnr": mean_tsnr,
-        "mean_std": mean_std,
         "mean_tsnr_masked": mean_tsnr_masked,
-        "mean_std_masked": mean_std_masked,
     }
 
 
@@ -81,13 +63,10 @@ def main():
         "good_frames": [],
         "percent_good_frames": [],
         "num_frames": [],
-        "mean_tsnr": [],
-        "mean_std": [],
         "mean_tsnr_masked": [],
-        "mean_std_masked": [],
     }
     futures = []
-    with ProcessPoolExecutor(max_workers=10) as executor:
+    with ProcessPoolExecutor(max_workers=100) as executor:
         # loop over subjects in AA_DATA_DIR
         for subject_dir in sorted(AA_DATA_DIR.glob("sub-*")):
             # print(subject_dir.name)
@@ -103,7 +82,9 @@ def main():
                     # print(run_dir.name)
                     print(f"Submitting Job: {subject_dir.name}, {session_name}, {run_dir.name}")
                     futures.append(
-                        executor.submit(compute_tSNR, run_dir, pipeline, subject_dir.name, session_name, run_dir.name)
+                        executor.submit(
+                            compute_tSNR, run_dir, pipeline, subject_dir.name, session_name, run_dir.name, wmparc_path
+                        )
                     )
                     # futures.append(
                     #     compute_tSNR(run_dir, pipeline, subject_dir.name, session_name, run_dir.name)
@@ -123,10 +104,7 @@ def main():
             datalist["good_frames"].append(result["good_frames"])
             datalist["percent_good_frames"].append(result["percent_good_frames"])
             datalist["num_frames"].append(result["num_frames"])
-            datalist["mean_tsnr"].append(result["mean_tsnr"])
-            datalist["mean_std"].append(result["mean_std"])
             datalist["mean_tsnr_masked"].append(result["mean_tsnr_masked"])
-            datalist["mean_std_masked"].append(result["mean_std_masked"])
 
     # get dataframe
     df = pd.DataFrame(datalist)
@@ -138,16 +116,10 @@ def main():
     topup_df = topup_df.drop(columns=["pipeline"])
     # merge the two dataframes on subject, session, and run
     df = pd.merge(medic_df, topup_df, on=["subject", "session", "run"], suffixes=("_medic", "_topup"))
-    df["difference_tsnr"] = df["mean_tsnr_medic"] - df["mean_tsnr_topup"]
-    df["difference_std"] = df["mean_std_medic"] - df["mean_std_topup"]
     df["difference_tsnr_masked"] = df["mean_tsnr_masked_medic"] - df["mean_tsnr_masked_topup"]
-    df["difference_std_masked"] = df["mean_std_masked_medic"] - df["mean_std_masked_topup"]
     df.to_csv(str(DATA_DIR / "tsnr.csv"), index=False)
     # temporary fix for bad runs
-    print(ttest_rel(df.mean_tsnr_medic, df.mean_tsnr_topup))
-    print(ttest_rel(df.mean_std_medic, df.mean_std_topup))
     print(ttest_rel(df.mean_tsnr_masked_medic, df.mean_tsnr_masked_topup))
-    print(ttest_rel(df.mean_std_masked_medic, df.mean_std_masked_topup))
     from IPython import embed
 
     embed()

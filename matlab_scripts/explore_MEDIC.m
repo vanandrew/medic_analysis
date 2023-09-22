@@ -12,15 +12,16 @@ subjects = dir([subjectsfolder '/sub-*']);
 % end_idx = 59412;
 start_idx = 59413;
 end_idx = 91282;
-% start_idx = 64679;
-% end_idx = 84050;
 % label = '';
 label = '_subcort';
-% label = '_cerebellum';
 
 dsize = end_idx;
 group_fc = ft_read_cifti_mod('/data/nil-bluearc/GMT/Scott/ABCD/ABCD_4.5k_all.dconn.nii');
 num_verts = end_idx - start_idx + 1;
+
+% get the voxel position for (subcort)
+nan_mask = isnan(group_fc.pos);
+voxel_pos = group_fc.pos(~nan_mask(:, 1), :);
 
 %%
 group_fc.data = group_fc.data(start_idx:end_idx, start_idx:end_idx);

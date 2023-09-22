@@ -188,6 +188,26 @@ def head_position_fieldmap(data):
     # plot range
     vlims = (-50, 50)
 
+    f_topup = plt.figure(figsize=(90 * MM_TO_INCHES, 30 * MM_TO_INCHES), layout="constrained")
+    gsm = GridSpec(1, 3, left=0.025, right=0.975, bottom=0.025, top=0.975, hspace=0.03, width_ratios=[72, 110, 110])
+    topup_fieldmap = topup_fieldmap
+    fmin = topup_fieldmap.min()
+    fmax = topup_fieldmap.max()
+    axes_list = []
+    for j in range(3):
+        axes_list.append(f_topup.add_subplot(gsm[j]))
+    data_plotter(
+        [topup_fieldmap],
+        vmin=fmin,
+        vmax=fmax,
+        colormaps="gray",
+        figure=f_topup,
+        axes_list=axes_list,
+    )
+    sbs = axes_list
+    sbs[0].set_title(r"TOPUP field map for High motion data", pad=4, weight="normal", loc="left")
+    f_topup.savefig(FIGURES_DIR / "topup_fmap.png", dpi=300)
+
     # plot static field maps
     f0 = plt.figure(figsize=(180 * MM_TO_INCHES, 130 * MM_TO_INCHES), layout="constrained")
 
@@ -1081,8 +1101,8 @@ def spotlight_comparison(data):
         ax2.imshow(t2_tstat[..., s].T, cmap=new_cmap, vmin=-10, vmax=10, origin="lower", alpha=0.75)
         ax2.set_xticks([])
         ax2.set_yticks([])
-    axes_list1[0].set_title(r"$\bf{a}$    T1w R$^2$ Spotlight", pad=4, loc="left")
-    axes_list2[0].set_title(r"$\bf{b}$    T2w R$^2$ Spotlight", pad=4, loc="left")
+    axes_list1[0].set_title(r"$\bf{a}$    T1w alignment: Spotlight analysis", pad=4, loc="left")
+    axes_list2[0].set_title(r"$\bf{b}$    T2w alignment: Spotlight analysis", pad=4, loc="left")
     # create axis for colorbar
     cbar = subfigs[0].colorbar(
         source_plot,
@@ -1229,6 +1249,7 @@ def alignment_metrics(data):
     sns.set_theme(**GLOBAL_SETTINGS)
 
 
+# figure 7
 def resp_analysis(data):
     settings = GLOBAL_SETTINGS.copy()
     settings["style"] = "darkgrid"
@@ -1262,7 +1283,9 @@ def resp_analysis(data):
     for r, l in zip(range(n_rows), ["a", "b", "c"]):
         ps = power_spectra[r]
         rd = resp_data[r]
-        f.text(0.05, ypos[r], r"$\bf{" + l + r"}$    " + f"Run {r + 1}", ha="left", va="center", fontsize=7)
+        if r == 0:
+            f.text(0.05, ypos[r], r"$\bf{a}$    " + f"Spectral Power Density", ha="left", va="center", fontsize=7)
+            f.text(0.55, ypos[r], r"$\bf{b}$    " + f"Respiratory Signal", ha="left", va="center", fontsize=7)
 
         # plot power spectra
         ax1 = f.add_subplot(gs[r][0, 0])
@@ -1273,6 +1296,7 @@ def resp_analysis(data):
         ax1.set_xticklabels([])
         ax1.tick_params(axis="x")
         ax1.tick_params(axis="y")
+        ax1.set_title(f"Run {r + 1}")
         ax2 = f.add_subplot(gs[r][1, 0])
         sns.lineplot(
             data=ps[["fmap_signal", "fmap_signal_filtered"]], dashes=False, linewidth=0.6, palette=palette, ax=ax2
@@ -1494,8 +1518,8 @@ def main():
     parser.add_argument("--figure_5_data", default=FIGURE5_DATA, help="path to figure 5 data")
     parser.add_argument("--figure_6_data", default=FIGURE6_DATA, help="path to figure 6 data")
     parser.add_argument("--figure_7_data", default=FIGURE7_DATA, help="path to figure 7 data")
-    parser.add_argument("--figure_10_data", default=FIGURE10_DATA, help="path to figure 7 data")
-    parser.add_argument("--figure_100_data", default=FIGURE100_DATA, help="path to figure 10 data")
+    parser.add_argument("--figure_10_data", default=FIGURE10_DATA, help="path to figure 10 data")
+    parser.add_argument("--figure_100_data", default=FIGURE100_DATA, help="path to figure 100 data")
 
     # get arguments
     args = parser.parse_args()
