@@ -18,6 +18,8 @@ dependencies = [
   "warpkit >= 0.0.1",
   "numpy >= 1.23.3",
   "hdf5storage >= 0.1.19",
+  "matplotlib >= 3.8.0",
+  "seaborn >= 0.13.0",
 ]
 
 [build-system]
