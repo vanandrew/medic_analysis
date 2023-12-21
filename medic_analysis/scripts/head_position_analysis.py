@@ -1,3 +1,7 @@
+"""Perform head position analysis.
+
+I think the figure is Figure 1, but the actual annotations don't match what's in the preprint.
+"""
 import nibabel as nib
 import numpy as np
 from bids import BIDSLayout

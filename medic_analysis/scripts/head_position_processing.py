@@ -1,3 +1,4 @@
+"""Prepare data for head position analysis."""
 import logging
 
 import nibabel as nib

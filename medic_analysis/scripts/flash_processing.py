@@ -1,3 +1,4 @@
+"""Prepare data for FLASH analysis."""
 import shutil
 
 import nibabel as nib

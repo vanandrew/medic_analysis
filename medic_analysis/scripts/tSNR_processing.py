@@ -1,3 +1,4 @@
+"""Calculate tSNR for each of the main derivatives."""
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 

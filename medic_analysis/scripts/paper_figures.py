@@ -19,7 +19,7 @@ from skimage.exposure import equalize_hist
 
 from medic_analysis.common.figures import data_plotter, hz_limits_to_mm, render_dynamic_figure
 
-from . import DATA_DIR, FIGURES_DIR, MM_TO_INCHES
+from . import FIGURES_DIR, MM_TO_INCHES
 
 # Set global seaborn figure settings
 GLOBAL_SETTINGS = {

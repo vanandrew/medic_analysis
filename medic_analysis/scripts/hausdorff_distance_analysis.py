@@ -1,3 +1,7 @@
+"""Perform Hausdorff distance analysis.
+
+This analysis is not included in the preprint.
+"""
 from pathlib import Path
 from tempfile import TemporaryDirectory
 

@@ -1,3 +1,4 @@
+"""Prepare data for the new sequence analysis."""
 import nibabel as nib
 from bids import BIDSLayout
 from memori.helpers import working_directory

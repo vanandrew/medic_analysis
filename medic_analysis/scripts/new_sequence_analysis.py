@@ -1,3 +1,7 @@
+"""Perform new sequence analysis.
+
+This generates videos for the supplement.
+"""
 import nibabel as nib
 import numpy as np
 from bids import BIDSLayout

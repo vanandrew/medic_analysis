@@ -1,3 +1,4 @@
+"""Prepare data for respiration analysis."""
 import logging
 import sys
 from typing import Dict, List

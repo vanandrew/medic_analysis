@@ -1,3 +1,7 @@
+"""Compare FLASH, TOPUP, and MEDIC field maps.
+
+This analysis is not included in the preprint.
+"""
 import nibabel as nib
 from memori.pathman import PathManager as PathMan
 
@@ -58,9 +62,9 @@ def main():
         text_color="white",
     )
     sbs = sf[0].get_axes()
-    sbs[1].set_title(f"(A) PE-Polar (topup)", loc="center", y=-0.25)
-    sbs[4].set_title(f"(B) FLASH (ROMEO)", loc="center", y=-0.25)
-    sbs[7].set_title(f"(C) ME-EPI (MEDIC)", loc="center", y=-0.25)
+    sbs[1].set_title("(A) PE-Polar (topup)", loc="center", y=-0.25)
+    sbs[4].set_title("(B) FLASH (ROMEO)", loc="center", y=-0.25)
+    sbs[7].set_title("(C) ME-EPI (MEDIC)", loc="center", y=-0.25)
 
     # compute difference from flash
     fmap_diff = medic_fmap_data - topup_fmap_data
@@ -77,9 +81,9 @@ def main():
         text_color="white",
     )
     sbs = sf[1].get_axes()
-    sbs[1].set_title(f"(D) ME-EPI (MEDIC) - PE-Polar (topup)", loc="center", y=-0.25)
-    sbs[4].set_title(f"(E) PE-Polar (topup) - FLASH (ROMEO)", loc="center", y=-0.25)
-    sbs[7].set_title(f"(F) ME-EPI (MEDIC) - FLASH (ROMEO)", loc="center", y=-0.25)
+    sbs[1].set_title("(D) ME-EPI (MEDIC) - PE-Polar (topup)", loc="center", y=-0.25)
+    sbs[4].set_title("(E) PE-Polar (topup) - FLASH (ROMEO)", loc="center", y=-0.25)
+    sbs[7].set_title("(F) ME-EPI (MEDIC) - FLASH (ROMEO)", loc="center", y=-0.25)
 
     # plot figures
     f.savefig(FIGURE_OUT / "fieldmap_comparison.png", dpi=300, bbox_inches="tight")

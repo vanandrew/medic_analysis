@@ -1,12 +1,13 @@
+"""Extract cerebellum surface from NIfTI files."""
 from pathlib import Path
 
 import nibabel as nib
 import numpy as np
 from skimage.measure import marching_cubes
 
-ME_PIPELINE_PATH = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2/")
-ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UMinn/derivatives/")
-ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline")
+# ME_PIPELINE_PATH = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2/")
+# ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UMinn/derivatives/")
+# ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline")
 ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/SLICETEST/derivatives/me_pipeline")
 
 

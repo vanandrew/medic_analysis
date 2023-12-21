@@ -1,3 +1,4 @@
+"""Calculate alignment quality metrics for different processing derivatives."""
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
