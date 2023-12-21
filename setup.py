@@ -1,4 +1,4 @@
-import subprocess
+"""Setup file for the MEDIC analysis Python code."""
 from pathlib import Path
 from setuptools import setup
 

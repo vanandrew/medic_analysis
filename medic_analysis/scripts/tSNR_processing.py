@@ -1,12 +1,13 @@
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+
 import nibabel as nib
 import numpy as np
 import pandas as pd
 from scipy.stats import ttest_rel
-from pathlib import Path
 from warpkit.utilities import create_brain_mask
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from . import DATA_DIR
 
+from . import DATA_DIR
 
 AA_DATA_DIR = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2")
 
@@ -83,7 +84,13 @@ def main():
                     print(f"Submitting Job: {subject_dir.name}, {session_name}, {run_dir.name}")
                     futures.append(
                         executor.submit(
-                            compute_tSNR, run_dir, pipeline, subject_dir.name, session_name, run_dir.name, wmparc_path
+                            compute_tSNR,
+                            run_dir,
+                            pipeline,
+                            subject_dir.name,
+                            session_name,
+                            run_dir.name,
+                            wmparc_path,
                         )
                     )
                     # futures.append(

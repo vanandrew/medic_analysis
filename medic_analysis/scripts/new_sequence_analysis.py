@@ -1,11 +1,11 @@
-from bids import BIDSLayout
 import nibabel as nib
 import numpy as np
+from bids import BIDSLayout
 from memori.pathman import PathManager as PathMan
-from . import (
-    parser,
-)
-from medic_analysis.common import data_plotter, render_dynamic_figure, plt
+
+from medic_analysis.common.figures import data_plotter, plt, render_dynamic_figure
+
+from . import parser
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/SLICETEST"

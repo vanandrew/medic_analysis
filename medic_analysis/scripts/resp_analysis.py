@@ -2,10 +2,11 @@ import nibabel as nib
 import numpy as np
 import pandas as pd
 import scipy.signal as ss
-from medic_analysis.common import plt, sns, data_plotter
-from bids import BIDSLayout
-from memori.pathman import PathManager as PathMan
 from memori.helpers import working_directory
+from memori.pathman import PathManager as PathMan
+
+from medic_analysis.common.figures import data_plotter, plt, sns
+
 from . import parser
 
 # Define the path to the BIDS dataset

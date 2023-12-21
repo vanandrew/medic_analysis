@@ -1,27 +1,17 @@
 import logging
+
 import nibabel as nib
 import numpy as np
 from bids import BIDSLayout
-from memori.stage import Stage
-from memori.pathman import PathManager as PathMan
 from memori.helpers import working_directory
-from medic_analysis.common import (
-    apply_framewise_mats,
-    run_topup,
-    framewise_align,
-    run_medic,
-)
-from warpkit.utilities import (
-    displacement_map_to_field,
-    resample_image,
-    convert_warp,
-)
-from . import (
-    parser,
-    PED_TABLE,
-    POLARITY_IDX,
-)
+from memori.pathman import PathManager as PathMan
+from memori.stage import Stage
+from warpkit.utilities import convert_warp, displacement_map_to_field, resample_image
 
+from medic_analysis.common.align import apply_framewise_mats, framewise_align
+from medic_analysis.common.distortion import run_medic, run_topup
+
+from . import PED_TABLE, POLARITY_IDX, parser
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/HEADPOSITIONSUSTEST"
@@ -159,7 +149,9 @@ def main():
                 hash_output=(hash_outputs / f"run{run:02d}").path,
             )
             stage_framewise_align.run(
-                me_epi_ref_path, me_epi_mag_data[idx][0].path, (PathMan(f"run{run:02d}") / f"run{run:02d}").path
+                me_epi_ref_path,
+                me_epi_mag_data[idx][0].path,
+                (PathMan(f"run{run:02d}") / f"run{run:02d}").path,
             )
     # do the same for fmaps
     fmap_aligned_output = output_dir / "framewise_align" / "fmap"

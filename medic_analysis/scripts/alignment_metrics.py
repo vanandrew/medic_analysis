@@ -1,16 +1,17 @@
-import numpy as np
-import scipy.sparse as ss
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
+
 import nibabel as nib
-from warpkit.utilities import create_brain_mask
+import numpy as np
 import pandas as pd
+import scipy.sparse as ss
 from scipy.stats import ttest_rel
 from skimage.morphology import ball
-from skimage.filters import gaussian
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from medic_analysis.common.align import roc_metrics
-from . import DATA_DIR
+from warpkit.utilities import create_brain_mask
 
+from medic_analysis.common.align import roc_metrics
+
+from . import DATA_DIR
 
 ASD_ADHD_DATA = Path("/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2")
 

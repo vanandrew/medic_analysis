@@ -1,9 +1,8 @@
 from pathlib import Path
+
 import nibabel as nib
 import numpy as np
 from skimage.measure import marching_cubes
-from warpkit.utilities import get_x_orient_transform
-
 
 ME_PIPELINE_PATH = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2/")
 ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UMinn/derivatives/")

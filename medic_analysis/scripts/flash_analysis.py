@@ -1,9 +1,9 @@
 import nibabel as nib
 from memori.pathman import PathManager as PathMan
-from . import (
-    parser,
-)
-from medic_analysis.common import data_plotter, plt, FIGURE_OUT
+
+from medic_analysis.common.figures import FIGURE_OUT, data_plotter, plt
+
+from . import parser
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/FLASHSUSTEST"

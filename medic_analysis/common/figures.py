@@ -1,18 +1,17 @@
-#!/usr/bin/env python
-import warnings
+"""Functions to generate figures for the paper."""
 import logging
+import warnings
 from tempfile import TemporaryDirectory
-from memori.pathman import PathManager as Path
-import matplotlib as mpl
+from typing import Callable, List, Optional, Sequence, Tuple, Union, cast
+
 import matplotlib.pyplot as plt
+import nibabel as nib
+import numpy.typing as npt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure, SubFigure
 from matplotlib.image import AxesImage
-import seaborn as sns
-import nibabel as nib
-import numpy.typing as npt
-from typing import Callable, cast, List, Tuple, Optional, Sequence, Union
 from memori.logging import run_process
+from memori.pathman import PathManager as Path
 
 # plot settings
 warnings.filterwarnings("ignore")
@@ -80,7 +79,10 @@ def ffmpeg(img_dir: Union[str, Path], out_file: Union[str, Path], fps: int = 20)
 
 
 def hz_limits_to_mm(
-    hz_min: float = -100, hz_max: float = 200, total_readout_time: float = 0.0305196, resolution: float = 2
+    hz_min: float = -100,
+    hz_max: float = 200,
+    total_readout_time: float = 0.0305196,
+    resolution: float = 2,
 ) -> Tuple[float, float]:
     """Convert Hz limits to mm limits.
 
@@ -241,7 +243,13 @@ def data_plotter(
             orientation="vertical",
         )
         cbar.ax.yaxis.set_ticks_position("left")
-        cbar.ax.set_ylabel(colorbar_label, labelpad=colorbar_labelpad, color=text_color, fontsize=fontsize, rotation=90)
+        cbar.ax.set_ylabel(
+            colorbar_label,
+            labelpad=colorbar_labelpad,
+            color=text_color,
+            fontsize=fontsize,
+            rotation=90,
+        )
         cbar.ax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
         # for colorbar alt range
         if colorbar_alt_range:
@@ -249,7 +257,11 @@ def data_plotter(
             cax = cbar.ax.twinx()
             cax.set_ylim(alt_vmin, alt_vmax)
             cax.set_ylabel(
-                colorbar_alt_label, labelpad=colorbar_alt_labelpad, color=text_color, fontsize=fontsize, rotation=90
+                colorbar_alt_label,
+                labelpad=colorbar_alt_labelpad,
+                color=text_color,
+                fontsize=fontsize,
+                rotation=90,
             )
             cax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
 
@@ -264,7 +276,11 @@ def data_plotter(
         )
         cbar.ax.yaxis.set_ticks_position("right")
         cbar.ax.set_ylabel(
-            colorbar2_label, labelpad=colorbar2_labelpad, color=text_color, fontsize=fontsize, rotation=90
+            colorbar2_label,
+            labelpad=colorbar2_labelpad,
+            color=text_color,
+            fontsize=fontsize,
+            rotation=90,
         )
         cbar.ax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
         # for colorbar alt range
@@ -274,7 +290,11 @@ def data_plotter(
             cax.yaxis.set_ticks_position("left")
             cax.set_ylim(alt_vmin, alt_vmax)
             cax.set_ylabel(
-                colorbar2_alt_label, labelpad=colorbar2_alt_labelpad, color=text_color, fontsize=fontsize, rotation=90
+                colorbar2_alt_label,
+                labelpad=colorbar2_alt_labelpad,
+                color=text_color,
+                fontsize=fontsize,
+                rotation=90,
             )
             cax.tick_params(color=text_color, labelsize=int(fontsize) - 1, labelcolor=text_color)
             cbar.ax.yaxis.set_ticks_position("right")  # reset the ticks position on the non-alt bar
@@ -315,7 +335,12 @@ def render_dynamic_figure(
 
             # plot data and get figure
             figure = data_plotter(
-                imgs=imgs, **kwargs, figure=fig, axes_list=axes_list, cbar_ax=cbar_ax, frame_num=frame_num
+                imgs=imgs,
+                **kwargs,
+                figure=fig,
+                axes_list=axes_list,
+                cbar_ax=cbar_ax,
+                frame_num=frame_num,
             )
 
             # modify the figure with figure_fx if it exists

@@ -1,16 +1,15 @@
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
 import nibabel as nib
 import numpy as np
-from scipy.optimize import minimize_scalar, brute
-from scipy.stats import ttest_rel
-from warpkit.utilities import compute_hausdorff_distance
-from warpkit.unwrap import get_largest_connected_component
-from skimage.morphology import dilation, ball, binary_dilation
-from sklearn.metrics import accuracy_score
-from pathlib import Path
-import simplebrainviewer as sbv
 import pandas as pd
 from omni.interfaces.ants import N4BiasFieldCorrection
-from tempfile import TemporaryDirectory
+from scipy.optimize import brute
+from scipy.stats import ttest_rel
+from sklearn.metrics import accuracy_score
+from warpkit.utilities import compute_hausdorff_distance
+
 from . import DATA_DIR
 
 DATA_OUTPUT_DIR = "/home/usr/vana/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2"

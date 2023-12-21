@@ -1,10 +1,9 @@
-from memori.pathman import PathManager as PathMan
-from memori.helpers import working_directory
-from bids import BIDSLayout
-import numpy as np
 import nibabel as nib
+from bids import BIDSLayout
+from memori.helpers import working_directory
+from memori.pathman import PathManager as PathMan
 from warpkit.distortion import medic
-from medic_analysis.common import framewise_align
+
 from . import parser
 
 # Define the path to the BIDS dataset

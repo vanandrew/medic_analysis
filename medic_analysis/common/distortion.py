@@ -1,11 +1,11 @@
+"""Functions to perform distortion correction."""
 import os
-import numpy as np
+from typing import cast
+
 import nibabel as nib
 from memori.logging import run_process
 from memori.pathman import PathManager as PathMan
 from warpkit.distortion import medic
-from typing import cast
-
 
 if os.environ.get("ROMEO_PATH") is None:
     ROMEO_PATH = "/home/usr/vana/GMT2/Andrew/romeo/compiled/bin/romeo"

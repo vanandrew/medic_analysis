@@ -1,23 +1,17 @@
 import shutil
+
 import nibabel as nib
-import numpy as np
 from bids import BIDSLayout
-from memori.stage import Stage
 from memori.helpers import working_directory
-from memori.pathman import PathManager as PathMan
 from memori.logging import run_process
-from medic_analysis.common import (
-    N4BiasCorrection,
-    run_romeo,
-    run_topup,
-    run_medic,
-    framewise_align,
-)
-from . import (
-    parser,
-    PED_TABLE,
-    POLARITY_IDX,
-)
+from memori.pathman import PathManager as PathMan
+from memori.stage import Stage
+
+from medic_analysis.common.align import framewise_align
+from medic_analysis.common.bias_field import N4BiasCorrection
+from medic_analysis.common.distortion import run_medic, run_romeo, run_topup
+
+from . import PED_TABLE, parser
 
 # Define the path to the BIDS dataset
 BIDS_DATA_DIR = "/home/usr/vana/GMT2/Andrew/FLASHSUSTEST"
@@ -94,11 +88,15 @@ def main():
             # first flash scan needs bias correction
             if idx == 0:
                 stage_n4_bias1 = Stage(
-                    N4BiasCorrection, stage_name="n4_bias1", hash_output=(flash_hashout / "n4_bias1").path
+                    N4BiasCorrection,
+                    stage_name="n4_bias1",
+                    hash_output=(flash_hashout / "n4_bias1").path,
                 )
                 stage_n4_bias1.run(flash_mag1[0].path, "mag1_biascorrected.nii.gz")
                 stage_n4_bias2 = Stage(
-                    N4BiasCorrection, stage_name="n4_bias2", hash_output=(flash_hashout / "n4_bias2").path
+                    N4BiasCorrection,
+                    stage_name="n4_bias2",
+                    hash_output=(flash_hashout / "n4_bias2").path,
                 )
                 stage_n4_bias2.run(flash_mag2[0].path, "mag2_biascorrected.nii.gz")
             else:
@@ -118,7 +116,17 @@ def main():
                 ).to_filename("mag2_biascorrected_clipped.nii.gz")
 
             # get brain mask
-            run_process(["bet", "mag1_biascorrected_clipped.nii.gz", "brain.nii.gz", "-f", "0.4", "-m", "-v"])
+            run_process(
+                [
+                    "bet",
+                    "mag1_biascorrected_clipped.nii.gz",
+                    "brain.nii.gz",
+                    "-f",
+                    "0.4",
+                    "-m",
+                    "-v",
+                ]
+            )
 
             # now concatenate the mags and phases
             if not PathMan("combined_mag.nii.gz").exists() and not PathMan("combined_phase.nii.gz").exists():

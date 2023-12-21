@@ -3,10 +3,10 @@ import numpy as np
 from bids import BIDSLayout
 from memori.pathman import PathManager as PathMan
 from warpkit.unwrap import create_brain_mask
-from . import (
-    parser,
-)
-from medic_analysis.common import data_plotter, render_dynamic_figure, plt, sns, FIGURE_OUT
+
+from medic_analysis.common.figures import FIGURE_OUT, data_plotter, plt, render_dynamic_figure, sns
+
+from . import parser
 
 sns.set(
     font="Lato",
