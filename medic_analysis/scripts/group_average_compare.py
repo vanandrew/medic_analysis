@@ -1,5 +1,4 @@
-import nibabel as nib
-import numpy as np
+"""Compare group averages (not yet implemented)."""
 
 
 def main():

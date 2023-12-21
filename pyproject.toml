@@ -11,15 +11,16 @@ urls = { github = "https://github.com/vanandrew/medic_analysis" }
 version = "0.0.1"
 dynamic = ["entry-points"]
 dependencies = [
-  "nibabel >= 4.0.2",
-  "indexed-gzip >= 1.7.0",
-  "pybids >= 0.15.1",
-  "memori >= 0.2.1",
-  "warpkit >= 0.0.1",
-  "numpy >= 1.23.3",
   "hdf5storage >= 0.1.19",
+  "indexed-gzip >= 1.7.0",
   "matplotlib >= 3.8.0",
+  "memori >= 0.2.1",
+  "nibabel >= 4.0.2",
+  "numpy >= 1.23.3",
+  "omni",
+  "pybids >= 0.15.1",
   "seaborn >= 0.13.0",
+  "warpkit >= 0.0.1",
 ]
 
 [build-system]

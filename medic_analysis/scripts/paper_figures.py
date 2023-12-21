@@ -53,7 +53,6 @@ GLOBAL_SETTINGS = {
 sns.set_theme(**GLOBAL_SETTINGS)
 LOWER_FONT_SIZE = 5
 
-
 # Default paths for data
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 # Head position figure
