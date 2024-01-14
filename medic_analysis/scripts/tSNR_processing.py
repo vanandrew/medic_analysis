@@ -1,4 +1,11 @@
-"""Calculate tSNR for each of the main derivatives."""
+"""Computes the tSNR analysis for each pipeline
+
+This module is similar to the `alignment_metics.py` but does the tSNR analysis
+for each pipeline.
+
+This module expects derivative outputs from the dosenbach lab preprocessing pipeline:
+https://github.com/DosenbachGreene/processing_pipeline
+"""
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 

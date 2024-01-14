@@ -1,4 +1,7 @@
-"""Main script for generating paper figures."""
+"""Main script for generating paper figures.
+
+See `paper_figures --help` for more information.
+"""
 import argparse
 import json
 import os

@@ -1,4 +1,13 @@
-"""Extract cerebellum surface from NIfTI files."""
+"""Extract cerebellum surface from NIfTI files.
+
+This script extracts the cerebellum surface from the wmparc.nii.gz file.
+It uses the marching cubes algorithm to extract the surface and then stores
+it in a GIFTI file. The GIFTI file is then projected to scanner space and
+stored in the subject's atlas directory.
+
+This module expects derivative outputs from the dosenbach lab preprocessing pipeline:
+https://github.com/DosenbachGreene/processing_pipeline
+"""
 from pathlib import Path
 
 import nibabel as nib

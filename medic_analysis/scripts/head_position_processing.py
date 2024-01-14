@@ -1,4 +1,13 @@
-"""Prepare data for head position analysis."""
+"""Prepare data for head position analysis.
+
+This script produces outputs necessary for the head position analysis, by
+analyzing data collected from a subject in different positions. Each image
+corresponding to a different position is aligned to the subject's image in the
+neutral position, so that changes in the B0 field can be examined and compared.
+
+This script expects the raw BIDS dataset containing the head position data to
+be examined.
+"""
 import logging
 
 import nibabel as nib
