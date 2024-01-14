@@ -91,12 +91,8 @@ def main():
                             subject_dir.name,
                             session_name,
                             run_dir.name,
-                            wmparc_path,
                         )
                     )
-                    # futures.append(
-                    #     compute_tSNR(run_dir, pipeline, subject_dir.name, session_name, run_dir.name)
-                    # )
                     print(f"Submitted Job: {subject_dir.name}, {session_name}, {run_dir.name}")
 
         for future in as_completed(futures):
@@ -128,6 +124,5 @@ def main():
     df.to_csv(str(DATA_DIR / "tsnr.csv"), index=False)
     # temporary fix for bad runs
     print(ttest_rel(df.mean_tsnr_masked_medic, df.mean_tsnr_masked_topup))
-    from IPython import embed
-
-    embed()
+    # from IPython import embed
+    # embed()

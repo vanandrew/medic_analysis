@@ -17,7 +17,7 @@ dependencies = [
   "memori >= 0.2.1",
   "nibabel >= 4.0.2",
   "numpy >= 1.23.3",
-  "omni",
+  "omni >= 2023.2.1",
   "pybids >= 0.15.1",
   "seaborn >= 0.13.0",
   "warpkit >= 0.0.1",

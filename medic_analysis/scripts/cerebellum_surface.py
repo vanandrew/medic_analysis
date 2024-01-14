@@ -43,17 +43,12 @@ def main():
         # load the wmparc
         wm_parc = nib.load(wm_parc_path)
         data = wm_parc.get_fdata()
-        # wm_parc.to_filename("/home/usr/vana/GMT2/Andrew/test.nii.gz")
 
         # get cerebellum
         cerebellum = (data == 8) | (data == 47) | (data == 7) | (data == 46)
         vertices, faces, _, _ = marching_cubes(cerebellum)
         # project vertices to scanner space
         affine = wm_parc.affine.copy()
-        # affine[0, 0] *= -1
-        # affine[0, 3] = (data.shape[0] - 1) * np.abs(affine[0, 0])
-        # affine[1, 3] = 0
-        # affine[2, 3] = 0
         vertices = nib.affines.apply_affine(affine, vertices)
         gifti = nib.gifti.GiftiImage()
         gifti.add_gifti_data_array(
@@ -81,10 +76,6 @@ def main():
         vertices, faces, _, _ = marching_cubes(cerebellum)
         # project vertices to scanner space
         affine = wm_parc.affine.copy()
-        # affine[0, 0] *= -1
-        # affine[0, 3] = (data.shape[0] - 1) * np.abs(affine[0, 0])
-        # affine[1, 3] = 0
-        # affine[2, 3] = 0
         vertices = nib.affines.apply_affine(affine, vertices)
         gifti = nib.gifti.GiftiImage()
         gifti.add_gifti_data_array(
