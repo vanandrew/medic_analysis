@@ -1,4 +1,14 @@
-"""Prepare data for respiration analysis."""
+"""Generates plots for respiration analysis.
+
+This script generates plots for respiration analysis. The plots include the
+power spectrum of the respiration signal from the respiratory belt and the
+power spectrum of the average MEDIC field map signal. The plots also include
+the respiration signal from the respiratory belt and the average MEDIC field
+map signal.
+
+This script expects the raw BIDS dataset containing the physio data and the
+ME-EPI data.
+"""
 import logging
 import sys
 from typing import Dict, List

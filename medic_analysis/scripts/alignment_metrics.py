@@ -1,4 +1,17 @@
-"""Calculate alignment quality metrics for different processing derivatives."""
+"""Calculate alignment quality metrics for different processing derivatives.
+
+This module calculates various alignment quality metrics and dumps them into a csv file.
+
+The metrics calculated are:
+    - R^2 between T1w/T2w and BOLD
+    - R between gradient magnitude of T1w/T2w and BOLD
+    - Normalized mutual information between T1w/T2w and BOLD
+    - Local correlation between T1w/T2w and BOLD
+    - ROC metrics between T1w/T2w and BOLD
+
+This module expects derivative outputs from the dosenbach lab preprocessing pipeline:
+https://github.com/DosenbachGreene/processing_pipeline
+"""
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
