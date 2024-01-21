@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Split combined MEDIC- and TOPUP-corrected CIFTI into method-specific files."""
 import nibabel as nib
 import numpy as np
 from nibabel.cifti2.cifti2_axes import BrainModelAxis, ScalarAxis
@@ -11,7 +12,7 @@ img = nib.load("Similarity_toABCDavg_MEDICandTOPUP_allruns.dscalar.nii")
 medic_idx = np.array([not "TOPUP" in i for i in img.header.get_axis(0).name])
 topup_idx = np.array(["TOPUP" in i for i in img.header.get_axis(0).name])
 
-# split the data
+# split the data and drop subcortical vertices from arrays
 data = img.get_fdata()
 medic_data = data[medic_idx, :59412]
 topup_data = data[topup_idx, :59412]

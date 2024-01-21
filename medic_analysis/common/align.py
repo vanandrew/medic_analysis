@@ -1,7 +1,8 @@
+"""Functions to perform and evaluate frame-wise alignment."""
 import numpy as np
-from skimage.morphology import ball, binary_dilation
-from scipy.integrate import cumulative_trapezoid
 from memori.logging import run_process
+from scipy.integrate import cumulative_trapezoid
+from skimage.morphology import ball, binary_dilation
 
 
 def framewise_align(ref_frame, img_file, out_prefix):
@@ -21,7 +22,7 @@ def framewise_align(ref_frame, img_file, out_prefix):
             "-mats",
             "-plots",
             "-report",
-        ]
+        ],
     )
 
 
@@ -37,7 +38,7 @@ def apply_framewise_mats(ref_frame, img_file, mats_path, out_prefix, mat_prefix=
             "--fourdigit",
             "--userprefix",
             mat_prefix,
-        ]
+        ],
     )
 
 

@@ -1,27 +1,28 @@
-"""Main script for generating paper figures."""
-import os
+"""Main script for generating paper figures.
+
+See `paper_figures --help` for more information.
+"""
 import argparse
 import json
+import os
 from pathlib import Path
-from PIL import Image
-import numpy as np
-import nibabel as nib
+
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
-from scipy.stats import ttest_rel, pearsonr
+import matplotlib.pyplot as plt
+import nibabel as nib
+import numpy as np
 import pandas as pd
 import seaborn as sns
-from skimage.exposure import equalize_hist, equalize_adapthist
-from medic_analysis.common import data_plotter, render_dynamic_figure, hz_limits_to_mm
-from . import (
-    DATA_DIR,
-    FIGURES_DIR,
-    MM_TO_INCHES,
-)
+from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 from nilearn.plotting.cm import _cmap_d as nilearn_cmaps
+from PIL import Image
+from scipy.stats import ttest_rel
+from skimage.exposure import equalize_hist
 
+from medic_analysis.common.figures import data_plotter, hz_limits_to_mm, render_dynamic_figure
+
+from . import FIGURES_DIR, MM_TO_INCHES
 
 # Set global seaborn figure settings
 GLOBAL_SETTINGS = {
@@ -54,7 +55,6 @@ GLOBAL_SETTINGS = {
 }
 sns.set_theme(**GLOBAL_SETTINGS)
 LOWER_FONT_SIZE = 5
-
 
 # Default paths for data
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
@@ -189,7 +189,16 @@ def head_position_fieldmap(data):
     vlims = (-50, 50)
 
     f_topup = plt.figure(figsize=(90 * MM_TO_INCHES, 30 * MM_TO_INCHES), layout="constrained")
-    gsm = GridSpec(1, 3, left=0.025, right=0.975, bottom=0.025, top=0.975, hspace=0.03, width_ratios=[72, 110, 110])
+    gsm = GridSpec(
+        1,
+        3,
+        left=0.025,
+        right=0.975,
+        bottom=0.025,
+        top=0.975,
+        hspace=0.03,
+        width_ratios=[72, 110, 110],
+    )
     topup_fieldmap = topup_fieldmap
     fmin = topup_fieldmap.min()
     fmax = topup_fieldmap.max()
@@ -213,7 +222,15 @@ def head_position_fieldmap(data):
 
     # grid spec for head motion images
     gsm = GridSpec(
-        3, 7, left=0.025, right=0.975, bottom=0.625, top=0.96, wspace=0.04, hspace=0.03, height_ratios=[110, 72, 72]
+        3,
+        7,
+        left=0.025,
+        right=0.975,
+        bottom=0.625,
+        top=0.96,
+        wspace=0.04,
+        hspace=0.03,
+        height_ratios=[110, 72, 72],
     )
 
     # plot movement data
@@ -293,9 +310,7 @@ def head_position_fieldmap(data):
     right_edge_1 = left_edge_1 + width
     left_edge_2 = right_edge_1 + pad
     gs0 = GridSpec(1, 1, left=0.03, right=0.09, bottom=bottom, top=top)
-    gs_bar = GridSpecFromSubplotSpec(
-        1, 3, wspace=0, hspace=0, width_ratios=[2, 1, 6], subplot_spec=gs0[:, :]
-    )
+    gs_bar = GridSpecFromSubplotSpec(1, 3, wspace=0, hspace=0, width_ratios=[2, 1, 6], subplot_spec=gs0[:, :])
     gs1 = GridSpec(
         3,
         3,
@@ -426,10 +441,24 @@ def head_concatenation(data):
 
     # create gridspec
     gs = GridSpec(
-        3, 4, left=0.005, right=0.995, bottom=0.005, top=0.975, wspace=0.15, hspace=0.01, width_ratios=[9, 9, 1, 9]
+        3,
+        4,
+        left=0.005,
+        right=0.995,
+        bottom=0.005,
+        top=0.975,
+        wspace=0.15,
+        hspace=0.01,
+        width_ratios=[9, 9, 1, 9],
     )
     gs_cbar = GridSpecFromSubplotSpec(
-        3, 3, wspace=0, hspace=0, width_ratios=[3, 2, 7], height_ratios=[1, 20, 1], subplot_spec=gs[:, 2]
+        3,
+        3,
+        wspace=0,
+        hspace=0,
+        width_ratios=[3, 2, 7],
+        height_ratios=[1, 20, 1],
+        subplot_spec=gs[:, 2],
     )
 
     # plot images
@@ -442,7 +471,13 @@ def head_concatenation(data):
     ax_medic_dlpfc.set_title("MEDIC: Dynamic distortion correction", pad=6, loc="center")
     medic_title_pos = ax_medic_dlpfc.transAxes.inverted().transform(ax_medic_dlpfc.title.get_window_extent())
     ax_medic_dlpfc.text(
-        0.5, 1, "Exemplar participant", ha="center", va="center", fontsize=5, transform=ax_medic_dlpfc.transAxes
+        0.5,
+        1,
+        "Exemplar participant",
+        ha="center",
+        va="center",
+        fontsize=5,
+        transform=ax_medic_dlpfc.transAxes,
     )
     ax_medic_dlpfc.set_xlabel("Correlation to standard: r = 0.41", labelpad=2)
     ax_topup_dlpfc = f.add_subplot(gs[0, 1])
@@ -453,7 +488,13 @@ def head_concatenation(data):
     ax_topup_dlpfc.set_title("TOPUP: Static distortion correction", pad=6, loc="center")
     topup_title_pos = ax_topup_dlpfc.transAxes.inverted().transform(ax_topup_dlpfc.title.get_window_extent())
     ax_topup_dlpfc.text(
-        0.5, 1, "Exemplar participant", ha="center", va="center", fontsize=5, transform=ax_topup_dlpfc.transAxes
+        0.5,
+        1,
+        "Exemplar participant",
+        ha="center",
+        va="center",
+        fontsize=5,
+        transform=ax_topup_dlpfc.transAxes,
     )
     ax_topup_dlpfc.set_xlabel("Correlation to standard: r = 0.18", labelpad=2)
     ax_truth_dlpfc = f.add_subplot(gs[0, 3])
@@ -464,7 +505,13 @@ def head_concatenation(data):
     ax_truth_dlpfc.set_title("Standard: Low motion (TOPUP: static)", pad=6, loc="center")
     truth_title_pos = ax_truth_dlpfc.transAxes.inverted().transform(ax_truth_dlpfc.title.get_window_extent())
     ax_truth_dlpfc.text(
-        0.5, 1, "Exemplar participant", ha="center", va="center", fontsize=5, transform=ax_truth_dlpfc.transAxes
+        0.5,
+        1,
+        "Exemplar participant",
+        ha="center",
+        va="center",
+        fontsize=5,
+        transform=ax_truth_dlpfc.transAxes,
     )
     ax_pos = ax_medic_dlpfc.get_position()
     f.text(
@@ -586,7 +633,11 @@ def head_concatenation(data):
     # create colorbar
     cbar_ax = f.add_subplot(gs_cbar[1, 1])
     pl = cbar_ax.imshow(
-        np.array([[-0.6, 0.6], [0.6, -0.6]]), vmin=-0.6, vmax=0.6, aspect="auto", cmap=nilearn_cmaps["roy_big_bl"]
+        np.array([[-0.6, 0.6], [0.6, -0.6]]),
+        vmin=-0.6,
+        vmax=0.6,
+        aspect="auto",
+        cmap=nilearn_cmaps["roy_big_bl"],
     )
     cbar = f.colorbar(
         mappable=pl,
@@ -677,15 +728,45 @@ def group_template_comparison(data):
 
     # create grid specs
     gs = GridSpec(
-        1, 5, left=0.005, right=0.995, bottom=0.505, top=0.995, wspace=0.075, hspace=0, width_ratios=[9, 1, 9, 1, 9]
+        1,
+        5,
+        left=0.005,
+        right=0.995,
+        bottom=0.505,
+        top=0.995,
+        wspace=0.075,
+        hspace=0,
+        width_ratios=[9, 1, 9, 1, 9],
     )
     gs_cbar = GridSpecFromSubplotSpec(
-        3, 3, wspace=0, hspace=0, width_ratios=[2, 1, 6], height_ratios=[2, 5, 2], subplot_spec=gs[3]
+        3,
+        3,
+        wspace=0,
+        hspace=0,
+        width_ratios=[2, 1, 6],
+        height_ratios=[2, 5, 2],
+        subplot_spec=gs[3],
     )
-    gs_bot = GridSpec(1, 2, left=0.04, right=0.96, bottom=0.03, top=0.47, wspace=0.25, hspace=0.1, width_ratios=[1, 2])
+    gs_bot = GridSpec(
+        1,
+        2,
+        left=0.04,
+        right=0.96,
+        bottom=0.03,
+        top=0.47,
+        wspace=0.25,
+        hspace=0.1,
+        width_ratios=[1, 2],
+    )
     gs_tstat = GridSpecFromSubplotSpec(1, 2, wspace=0.075, hspace=0, width_ratios=[9, 1], subplot_spec=gs_bot[1])
     gs_tstat_cbar = GridSpecFromSubplotSpec(
-        3, 3, wspace=0, hspace=0, width_ratios=[3, 1, 9], height_ratios=[1, 10, 1], subplot_spec=gs_tstat[1]
+        3,
+        3,
+        wspace=0,
+        hspace=0,
+        width_ratios=[3, 1, 9],
+        height_ratios=[1, 10, 1],
+        subplot_spec=gs_tstat[1],
     )
 
     # plot surfaces
@@ -746,7 +827,11 @@ def group_template_comparison(data):
     mpl.rcParams["ytick.labelsize"] = 5
     cbar_ax = f.add_subplot(gs_cbar[1, 1])
     pl = cbar_ax.imshow(
-        np.array([[-0.5, 0.5], [0.5, -0.5]]), vmin=-0.5, vmax=0.5, aspect="auto", cmap=nilearn_cmaps["roy_big_bl"]
+        np.array([[-0.5, 0.5], [0.5, -0.5]]),
+        vmin=-0.5,
+        vmax=0.5,
+        aspect="auto",
+        cmap=nilearn_cmaps["roy_big_bl"],
     )
     cbar = f.colorbar(
         mappable=pl,
@@ -790,8 +875,22 @@ def group_template_comparison(data):
         [f"{x:.2f}" if np.isclose(x, vmin) or np.isclose(x, vmax) else "" for x in np.arange(vmin, vmax, 0.05)]
     )
     ax1.set_yticklabels([f"{x:.2f}" if np.isclose(x, vmax) else "" for x in np.arange(vmin, vmax, 0.05)])
-    ax1.text(0.075, 0.95, "MEDIC more similar to Group Average", ha="left", va="center", transform=ax1.transAxes)
-    ax1.text(0.925, 0.05, "TOPUP more similar to Group Average", ha="right", va="center", transform=ax1.transAxes)
+    ax1.text(
+        0.075,
+        0.95,
+        "MEDIC more similar to Group Average",
+        ha="left",
+        va="center",
+        transform=ax1.transAxes,
+    )
+    ax1.text(
+        0.925,
+        0.05,
+        "TOPUP more similar to Group Average",
+        ha="right",
+        va="center",
+        transform=ax1.transAxes,
+    )
     x = np.array([-0.1, 0.7])
     y = x
     y2 = np.ones(x.shape) * 0.6
@@ -950,10 +1049,16 @@ def fmap_comparison(data_dir):
         top=0.96,
         wspace=0.15,
         hspace=0.125,
-        height_ratios=[7, 1, 7, 7]
+        height_ratios=[7, 1, 7, 7],
     )
     gs_cbar = GridSpecFromSubplotSpec(
-        3, 3, wspace=0, hspace=0, width_ratios=[1, 50, 1], height_ratios=[11, 5, 11], subplot_spec=gs[1, :]
+        3,
+        3,
+        wspace=0,
+        hspace=0,
+        width_ratios=[1, 50, 1],
+        height_ratios=[11, 5, 11],
+        subplot_spec=gs[1, :],
     )
     ax_WashU_fmap = f.add_subplot(gs[0, 0])
     ax_WashU_medic = f.add_subplot(gs[2, 0])
@@ -996,26 +1101,50 @@ def fmap_comparison(data_dir):
     ax_WashU_medic.set_xticks([])
     ax_WashU_medic.set_yticks([])
     ax_WashU_medic.set_ylabel("MEDIC", labelpad=4)
-    draw_arrow(ax_WashU_medic, data_to_ax(ax_WashU_medic, (1683, 1858)), data_to_ax(ax_WashU_medic, (1457, 1691)))
-    draw_arrow(ax_WashU_medic, data_to_ax(ax_WashU_medic, (2045, 1620)), data_to_ax(ax_WashU_medic, (1829, 1474)))
+    draw_arrow(
+        ax_WashU_medic,
+        data_to_ax(ax_WashU_medic, (1683, 1858)),
+        data_to_ax(ax_WashU_medic, (1457, 1691)),
+    )
+    draw_arrow(
+        ax_WashU_medic,
+        data_to_ax(ax_WashU_medic, (2045, 1620)),
+        data_to_ax(ax_WashU_medic, (1829, 1474)),
+    )
     ax_WashU_topup.imshow(washu_example_topup)
     ax_WashU_topup.set_xticks([])
     ax_WashU_topup.set_yticks([])
     ax_WashU_topup.set_ylabel("TOPUP", labelpad=4)
-    draw_arrow(ax_WashU_topup, data_to_ax(ax_WashU_topup, (1683, 1858)), data_to_ax(ax_WashU_topup, (1457, 1691)))
-    draw_arrow(ax_WashU_topup, data_to_ax(ax_WashU_topup, (2045, 1620)), data_to_ax(ax_WashU_topup, (1829, 1474)))
+    draw_arrow(
+        ax_WashU_topup,
+        data_to_ax(ax_WashU_topup, (1683, 1858)),
+        data_to_ax(ax_WashU_topup, (1457, 1691)),
+    )
+    draw_arrow(
+        ax_WashU_topup,
+        data_to_ax(ax_WashU_topup, (2045, 1620)),
+        data_to_ax(ax_WashU_topup, (1829, 1474)),
+    )
     ax_UMinn_fmap.imshow(minn_example_fmap)
     ax_UMinn_fmap.set_title(r"$\bf{b}$    UMinn Data", pad=6, loc="left")
     ax_UMinn_fmap.set_xticks([])
     ax_UMinn_fmap.set_yticks([])
     ax_UMinn_medic.imshow(minn_example_medic)
-    draw_arrow(ax_UMinn_medic, data_to_ax(ax_UMinn_medic, (1129, 622)), data_to_ax(ax_UMinn_medic, (898, 473)))
+    draw_arrow(
+        ax_UMinn_medic,
+        data_to_ax(ax_UMinn_medic, (1129, 622)),
+        data_to_ax(ax_UMinn_medic, (898, 473)),
+    )
     ax_UMinn_medic.set_xticks([])
     ax_UMinn_medic.set_yticks([])
     ax_UMinn_topup.imshow(minn_example_topup)
     ax_UMinn_topup.set_xticks([])
     ax_UMinn_topup.set_yticks([])
-    draw_arrow(ax_UMinn_topup, data_to_ax(ax_UMinn_topup, (1129, 622)), data_to_ax(ax_UMinn_topup, (898, 473)))
+    draw_arrow(
+        ax_UMinn_topup,
+        data_to_ax(ax_UMinn_topup, (1129, 622)),
+        data_to_ax(ax_UMinn_topup, (898, 473)),
+    )
     ax_Penn_fmap.imshow(penn_example_fmap)
     ax_Penn_fmap.set_title(r"$\bf{c}$    Penn Data", pad=6, loc="left")
     ax_Penn_fmap.set_xticks([])
@@ -1024,12 +1153,20 @@ def fmap_comparison(data_dir):
     ax_Penn_medic.set_xticks([])
     ax_Penn_medic.set_yticks([])
     draw_arrow(ax_Penn_medic, data_to_ax(ax_Penn_medic, (817, 611)), data_to_ax(ax_Penn_medic, (940, 414)))
-    draw_arrow(ax_Penn_medic, data_to_ax(ax_Penn_medic, (1202, 390)), data_to_ax(ax_Penn_medic, (1266, 164)))
+    draw_arrow(
+        ax_Penn_medic,
+        data_to_ax(ax_Penn_medic, (1202, 390)),
+        data_to_ax(ax_Penn_medic, (1266, 164)),
+    )
     ax_Penn_topup.imshow(penn_example_topup)
     ax_Penn_topup.set_xticks([])
     ax_Penn_topup.set_yticks([])
     draw_arrow(ax_Penn_topup, data_to_ax(ax_Penn_topup, (817, 611)), data_to_ax(ax_Penn_topup, (940, 414)))
-    draw_arrow(ax_Penn_topup, data_to_ax(ax_Penn_topup, (1202, 390)), data_to_ax(ax_Penn_topup, (1266, 164)))
+    draw_arrow(
+        ax_Penn_topup,
+        data_to_ax(ax_Penn_topup, (1202, 390)),
+        data_to_ax(ax_Penn_topup, (1266, 164)),
+    )
 
     # save figure
     f.savefig(FIGURES_DIR / "fieldmap_comparison.png", dpi=300)
@@ -1112,8 +1249,24 @@ def spotlight_comparison(data):
     )
     cbar.ax.yaxis.set_label_position("right")
     cbar.ax.set_ylabel("t-statistic", labelpad=4)
-    cbar.ax.text(0.5, 1.05, "MEDIC > TOPUP", ha="center", va="center", fontsize=6, transform=cbar.ax.transAxes)
-    cbar.ax.text(0.5, -0.05, "TOPUP > MEDIC", ha="center", va="center", fontsize=6, transform=cbar.ax.transAxes)
+    cbar.ax.text(
+        0.5,
+        1.05,
+        "MEDIC > TOPUP",
+        ha="center",
+        va="center",
+        fontsize=6,
+        transform=cbar.ax.transAxes,
+    )
+    cbar.ax.text(
+        0.5,
+        -0.05,
+        "TOPUP > MEDIC",
+        ha="center",
+        va="center",
+        fontsize=6,
+        transform=cbar.ax.transAxes,
+    )
 
     f.savefig(FIGURES_DIR / "spotlight_comparison.png", dpi=300)
     current_dir = os.getcwd()
@@ -1273,9 +1426,36 @@ def resp_analysis(data):
     f = plt.figure(figsize=(180 * MM_TO_INCHES, 140 * MM_TO_INCHES), layout="constrained")
     n_rows = len(power_spectra)
     gs = [
-        GridSpec(2, 2, left=0.075, right=0.975, bottom=0.667 + 0.05, top=1.000 - 0.04, wspace=0.2, hspace=0.2),
-        GridSpec(2, 2, left=0.075, right=0.975, bottom=0.333 + 0.05, top=0.667 - 0.04, wspace=0.2, hspace=0.2),
-        GridSpec(2, 2, left=0.075, right=0.975, bottom=0.000 + 0.05, top=0.333 - 0.04, wspace=0.2, hspace=0.2),
+        GridSpec(
+            2,
+            2,
+            left=0.075,
+            right=0.975,
+            bottom=0.667 + 0.05,
+            top=1.000 - 0.04,
+            wspace=0.2,
+            hspace=0.2,
+        ),
+        GridSpec(
+            2,
+            2,
+            left=0.075,
+            right=0.975,
+            bottom=0.333 + 0.05,
+            top=0.667 - 0.04,
+            wspace=0.2,
+            hspace=0.2,
+        ),
+        GridSpec(
+            2,
+            2,
+            left=0.075,
+            right=0.975,
+            bottom=0.000 + 0.05,
+            top=0.333 - 0.04,
+            wspace=0.2,
+            hspace=0.2,
+        ),
     ]
     pastel = sns.color_palette("pastel")
     palette = [pastel[2], pastel[4]]
@@ -1284,8 +1464,22 @@ def resp_analysis(data):
         ps = power_spectra[r]
         rd = resp_data[r]
         if r == 0:
-            f.text(0.05, ypos[r], r"$\bf{a}$    " + f"Spectral Power Density", ha="left", va="center", fontsize=7)
-            f.text(0.55, ypos[r], r"$\bf{b}$    " + f"Respiratory Signal", ha="left", va="center", fontsize=7)
+            f.text(
+                0.05,
+                ypos[r],
+                r"$\bf{a}$    " + f"Spectral Power Density",
+                ha="left",
+                va="center",
+                fontsize=7,
+            )
+            f.text(
+                0.55,
+                ypos[r],
+                r"$\bf{b}$    " + f"Respiratory Signal",
+                ha="left",
+                va="center",
+                fontsize=7,
+            )
 
         # plot power spectra
         ax1 = f.add_subplot(gs[r][0, 0])
@@ -1299,7 +1493,11 @@ def resp_analysis(data):
         ax1.set_title(f"Run {r + 1}")
         ax2 = f.add_subplot(gs[r][1, 0])
         sns.lineplot(
-            data=ps[["fmap_signal", "fmap_signal_filtered"]], dashes=False, linewidth=0.6, palette=palette, ax=ax2
+            data=ps[["fmap_signal", "fmap_signal_filtered"]],
+            dashes=False,
+            linewidth=0.6,
+            palette=palette,
+            ax=ax2,
         )
         ax2.set_ylim(0, 60)
         ax2.legend(["Unfiltered", "Filtered"], loc="upper center")

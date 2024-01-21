@@ -1,23 +1,35 @@
-import sys
+"""Generates plots for respiration analysis.
+
+This script generates plots for respiration analysis. The plots include the
+power spectrum of the respiration signal from the respiratory belt and the
+power spectrum of the average MEDIC field map signal. The plots also include
+the respiration signal from the respiratory belt and the average MEDIC field
+map signal.
+
+This script expects the raw BIDS dataset containing the physio data and the
+ME-EPI data.
+"""
 import logging
+import sys
 from typing import Dict, List
-from memori.pathman import PathManager as PathMan
-from memori.helpers import working_directory
-from bids import BIDSLayout
+
+import matplotlib.pyplot as plt
+import nibabel as nib
 import numpy as np
 import pandas as pd
-import nibabel as nib
 import pydicom
-import matplotlib.pyplot as plt
 import seaborn as sns
+from bids import BIDSLayout
+from memori.helpers import working_directory
+from memori.pathman import PathManager as PathMan
+from scipy.signal import filtfilt, iirfilter, periodogram
 from warpkit.distortion import medic
 from warpkit.unwrap import create_brain_mask
-from warpkit.utilities import displacement_map_to_field, resample_image
-from medic_analysis.common import apply_framewise_mats, framewise_align, sns, plt, run_topup
-from scipy.signal import filtfilt, iirfilter, periodogram, freqs
-import simplebrainviewer as sbv
-from . import parser, PED_TABLE, POLARITY_IDX, FIGURES_DIR, DATA_DIR
 
+from medic_analysis.common.align import apply_framewise_mats, framewise_align
+from medic_analysis.common.figures import plt, sns
+
+from . import DATA_DIR, FIGURES_DIR, parser
 
 sns.set_theme(style="darkgrid", palette="pastel", font="Satoshi")
 
@@ -350,7 +362,8 @@ def main():
 
             # create a table for each slice
             fmap_volume_filtered_masked = np.ma.masked_array(
-                fmap_volume_filtered, mask=np.broadcast_to(~brain_mask[..., np.newaxis], fmap_volume_filtered.shape)
+                fmap_volume_filtered,
+                mask=np.broadcast_to(~brain_mask[..., np.newaxis], fmap_volume_filtered.shape),
             )
             fmap_slices_filtered = fmap_volume_filtered_masked.mean(axis=(0, 1)).data
             fmap_slices_filtered = (

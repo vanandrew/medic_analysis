@@ -1,12 +1,21 @@
+"""Computes the tSNR analysis for each pipeline
+
+This module is similar to the `alignment_metics.py` but does the tSNR analysis
+for each pipeline.
+
+This module expects derivative outputs from the dosenbach lab preprocessing pipeline:
+https://github.com/DosenbachGreene/processing_pipeline
+"""
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
+
 import nibabel as nib
 import numpy as np
 import pandas as pd
 from scipy.stats import ttest_rel
-from pathlib import Path
 from warpkit.utilities import create_brain_mask
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from . import DATA_DIR
 
+from . import DATA_DIR
 
 AA_DATA_DIR = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2")
 
@@ -83,12 +92,14 @@ def main():
                     print(f"Submitting Job: {subject_dir.name}, {session_name}, {run_dir.name}")
                     futures.append(
                         executor.submit(
-                            compute_tSNR, run_dir, pipeline, subject_dir.name, session_name, run_dir.name, wmparc_path
+                            compute_tSNR,
+                            run_dir,
+                            pipeline,
+                            subject_dir.name,
+                            session_name,
+                            run_dir.name,
                         )
                     )
-                    # futures.append(
-                    #     compute_tSNR(run_dir, pipeline, subject_dir.name, session_name, run_dir.name)
-                    # )
                     print(f"Submitted Job: {subject_dir.name}, {session_name}, {run_dir.name}")
 
         for future in as_completed(futures):
@@ -120,6 +131,5 @@ def main():
     df.to_csv(str(DATA_DIR / "tsnr.csv"), index=False)
     # temporary fix for bad runs
     print(ttest_rel(df.mean_tsnr_masked_medic, df.mean_tsnr_masked_topup))
-    from IPython import embed
-
-    embed()
+    # from IPython import embed
+    # embed()

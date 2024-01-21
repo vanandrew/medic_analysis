@@ -1,13 +1,22 @@
+"""Extract cerebellum surface from NIfTI files.
+
+This script extracts the cerebellum surface from the wmparc.nii.gz file.
+It uses the marching cubes algorithm to extract the surface and then stores
+it in a GIFTI file. The GIFTI file is then projected to scanner space and
+stored in the subject's atlas directory.
+
+This module expects derivative outputs from the dosenbach lab preprocessing pipeline:
+https://github.com/DosenbachGreene/processing_pipeline
+"""
 from pathlib import Path
+
 import nibabel as nib
 import numpy as np
 from skimage.measure import marching_cubes
-from warpkit.utilities import get_x_orient_transform
 
-
-ME_PIPELINE_PATH = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2/")
-ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UMinn/derivatives/")
-ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline")
+# ME_PIPELINE_PATH = Path("/data/Daenerys/ASD_ADHD/NP1173/derivatives/me_pipeline2/")
+# ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UMinn/derivatives/")
+# ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/UPenn/derivatives/me_pipeline")
 ME_PIPELINE_PATH = Path("/home/usr/vana/GMT2/Andrew/SLICETEST/derivatives/me_pipeline")
 
 
@@ -43,17 +52,12 @@ def main():
         # load the wmparc
         wm_parc = nib.load(wm_parc_path)
         data = wm_parc.get_fdata()
-        # wm_parc.to_filename("/home/usr/vana/GMT2/Andrew/test.nii.gz")
 
         # get cerebellum
         cerebellum = (data == 8) | (data == 47) | (data == 7) | (data == 46)
         vertices, faces, _, _ = marching_cubes(cerebellum)
         # project vertices to scanner space
         affine = wm_parc.affine.copy()
-        # affine[0, 0] *= -1
-        # affine[0, 3] = (data.shape[0] - 1) * np.abs(affine[0, 0])
-        # affine[1, 3] = 0
-        # affine[2, 3] = 0
         vertices = nib.affines.apply_affine(affine, vertices)
         gifti = nib.gifti.GiftiImage()
         gifti.add_gifti_data_array(
@@ -81,10 +85,6 @@ def main():
         vertices, faces, _, _ = marching_cubes(cerebellum)
         # project vertices to scanner space
         affine = wm_parc.affine.copy()
-        # affine[0, 0] *= -1
-        # affine[0, 3] = (data.shape[0] - 1) * np.abs(affine[0, 0])
-        # affine[1, 3] = 0
-        # affine[2, 3] = 0
         vertices = nib.affines.apply_affine(affine, vertices)
         gifti = nib.gifti.GiftiImage()
         gifti.add_gifti_data_array(
